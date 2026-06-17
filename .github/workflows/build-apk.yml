@@ -30,7 +30,7 @@ jobs:
       - name: Unzip project
         run: |
           if [ "${{ github.ref_name }}" = "Studio" ]; then
-            ZIP_FILE="folder-flattener-Studio.zip"
+            ZIP_FILE="empty-folder-deleter.zip"
           else
             ZIP_FILE="FlattenApp.zip"
           fi

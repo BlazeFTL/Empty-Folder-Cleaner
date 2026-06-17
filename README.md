@@ -41,4 +41,5 @@ Configurable engine parameters for the search algorithm:
 
 ## Author
 
-Built By **BlazeFTL**
+Built b
+y **BlazeFTL**

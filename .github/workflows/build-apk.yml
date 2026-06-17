@@ -29,11 +29,11 @@ jobs:
 
       - name: Unzip project
         run: |
-          if [ "${{ github.ref_name }}" = "Studio" ]; then
-            ZIP_FILE="empty-folder-deleter.zip"
-          else
-            ZIP_FILE="FlattenApp.zip"
-          fi
+          case "${{ github.ref_name }}" in
+            Studio) ZIP_FILE="empty-folder-deleter.zip" ;;
+            main|master) ZIP_FILE="FlattenApp.zip" ;;
+            *) ZIP_FILE="${{ github.ref_name }}.zip" ;;
+          esac
           unzip -o "$ZIP_FILE" -d _extracted
           if [ -d _extracted/FlattenApp ]; then
             mv _extracted/FlattenApp .

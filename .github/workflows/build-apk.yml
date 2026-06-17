@@ -1,0 +1,102 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master, Studio]
+  pull_request:
+    branches: [main, master, Studio]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Unzip project
+        run: |
+          if [ "${{ github.ref_name }}" = "Studio" ]; then
+            ZIP_FILE="folder-flattener-Studio.zip"
+          else
+            ZIP_FILE="FlattenApp.zip"
+          fi
+          unzip -o "$ZIP_FILE" -d _extracted
+          if [ -d _extracted/FlattenApp ]; then
+            mv _extracted/FlattenApp .
+          else
+            mv _extracted FlattenApp
+          fi
+
+      - name: Enable AndroidX
+        working-directory: FlattenApp
+        run: |
+          echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+
+      - name: Generate Gradle Wrapper
+        working-directory: FlattenApp
+        run: |
+          gradle wrapper --gradle-version=9.3.1
+          chmod +x gradlew
+
+      - name: Add missing launcher icons
+        working-directory: FlattenApp
+        run: |
+          if ls app/src/main/res/mipmap-*/ic_launcher.* >/dev/null 2>&1; then
+            echo "Launcher icons already present, skipping."
+            exit 0
+          fi
+          ICON_B64="iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAACGUlEQVR4nO3TMQHAIADAsDEnmMYoAkAGRxMFfTrm2ueDqP91ALxkANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkXXq9BCne/k7jAAAAAElFTkSuQmCC"
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p app/src/main/res/mipmap-$d
+            echo "$ICON_B64" | base64 -d > app/src/main/res/mipmap-$d/ic_launcher.png
+            echo "$ICON_B64" | base64 -d > app/src/main/res/mipmap-$d/ic_launcher_round.png
+          done
+
+      - name: Generate debug keystore
+        working-directory: FlattenApp
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Build Debug APK
+        working-directory: FlattenApp
+        run: ./gradlew assembleDebug
+
+      - name: Copy APK to repo root
+        run: |
+          cp FlattenApp/app/build/outputs/apk/debug/*.apk ./FlattenApp-debug.apk
+
+      - name: Commit APK to repo
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin "${{ github.ref_name }}"
+          git reset --soft "origin/${{ github.ref_name }}"
+          git add FlattenApp-debug.apk
+          git commit -m "Update APK build [skip ci]" || echo "Nothing to commit"
+          git push origin HEAD:"${{ github.ref_name }}"
+
+      - name: Create Release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          files: FlattenApp-debug.apk

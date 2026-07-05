@@ -1,0 +1,6 @@
+{
+  "name": "Empty Folder Cleaner",
+  "description": "Reclaim storage space by scanning and removing empty folders and subfolders, including hidden elements, compliant with Android's storage guidelines.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

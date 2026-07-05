@@ -37,8 +37,9 @@ Configurable engine parameters for the search algorithm:
 
 
 ## Screenshots
-<img width="702" height="1560" alt="Screenshot_20260617-174649_Spark Launcher" src="https://github.com/user-attachments/assets/27cdb716-2815-41ca-a90e-17c0d9019f8b" />
-<img width="702" height="1560" alt="Screenshot_20260617-174651_Spark Launcher" src="https://github.com/user-attachments/assets/8219a152-b539-4cfe-abf5-124a21455755" />
+<img width="702" height="1560" alt="Screenshot_20260705-151109_Spark Launcher" src="https://github.com/user-attachments/assets/b4a7fdb2-0b74-438b-9949-0ac38d67ec0a" />
+<img width="702" height="1560" alt="Screenshot_20260705-151111_Spark Launcher" src="https://github.com/user-attachments/assets/9266086c-b3bf-43c7-9f9d-2391c717bf97" />
+
 
 
 | Main Screen | Folder Settings |

@@ -3,7 +3,32 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    
+    <!-- Soft background glow/shape inside the icon frame -->
+    <path
+        android:fillColor="#E0F2FE"
+        android:pathData="M54,12 C42,12 32,24 32,38 C32,54 46,70 54,94 C62,70 76,54 76,38 C76,24 66,12 54,12 Z" />
+        
+    <!-- Crisp white card leaf shape acting as the foreground spade -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,10 C40,10 30,25 30,40 C30,55 45,70 54,95 C63,70 78,55 78,40 C78,25 68,10 54,10 Z" />
+        android:pathData="M54,18 C45,18 37,27 37,38 C37,51 49,65 54,84 C59,65 71,51 71,38 C71,27 63,18 54,18 Z" />
+        
+    <!-- A miniature clean broom/sparkle/sweep dynamic graphic centered on the spade -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M54,30 L56,36 L62,38 L56,40 L54,46 L52,40 L46,38 L52,36 Z" />
+        
+    <!-- Sparkles on the sides -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M42,42 L43.5,45 L46.5,45.5 L43.5,47 L42,50 L40.5,47 L37.5,45.5 L40.5,45 Z" />
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M66,42 L67.5,45 L70.5,45.5 L67.5,47 L66,50 L64.5,47 L61.5,45.5 L64.5,45 Z" />
+        
+    <!-- Base spade handle for the premium look -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M54,84 L50,96 L58,96 Z" />
 </vector>

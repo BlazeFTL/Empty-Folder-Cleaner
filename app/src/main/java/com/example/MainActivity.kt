@@ -982,13 +982,18 @@ fun FolderDeleterDashboard(
                         color = Color(0xFF0F172A)
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = "By BlazeFTL",
-                        fontSize = 12.sp,
-                        color = Color(0xFF64748B),
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .background(accent.primary, shape = androidx.compose.foundation.shape.CircleShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "By BlazeFTL",
+                            fontSize = 11.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 Column(
@@ -1498,7 +1503,7 @@ fun FolderDeleterDashboard(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFFF3F4F9))
+                    .background(accent.container.copy(alpha = 0.35f))
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
             ) {
@@ -1516,7 +1521,7 @@ fun FolderDeleterDashboard(
                         text = "Empty Folder Cleaner",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = Color(0xFF0F172A),
+                        color = accent.primary,
                         letterSpacing = (-0.5).sp,
                     )
 
@@ -1585,7 +1590,7 @@ fun FolderDeleterDashboard(
             ) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1635,7 +1640,7 @@ fun FolderDeleterDashboard(
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1669,12 +1674,12 @@ fun FolderDeleterDashboard(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .background(Color(0xFFECFDF5), shape = androidx.compose.foundation.shape.CircleShape)
+                                    .background(accent.container, shape = androidx.compose.foundation.shape.CircleShape)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.FolderOpen,
                                     contentDescription = null,
-                                    tint = Color(0xFF059669),
+                                    tint = accent.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -1692,7 +1697,7 @@ fun FolderDeleterDashboard(
                 if (settings.enableExternalStorage) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1725,12 +1730,12 @@ fun FolderDeleterDashboard(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
                                         .size(40.dp)
-                                        .background(Color(0xFFFFFBEB), shape = androidx.compose.foundation.shape.CircleShape)
+                                        .background(accent.container, shape = androidx.compose.foundation.shape.CircleShape)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Storage,
                                         contentDescription = null,
-                                        tint = Color(0xFFD97706),
+                                        tint = accent.primary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -1753,7 +1758,7 @@ fun FolderDeleterDashboard(
             if (!settings.hideDryRun) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1804,7 +1809,7 @@ fun FolderDeleterDashboard(
                 progressState?.let { progress ->
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1990,7 +1995,7 @@ fun FolderDeleterDashboard(
             // ==========================================
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2008,12 +2013,12 @@ fun FolderDeleterDashboard(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .size(24.dp)
-                                    .background(Color(0xFFF1F5F9), shape = RoundedCornerShape(6.dp))
+                                    .background(accent.container, shape = RoundedCornerShape(6.dp))
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Terminal,
                                     contentDescription = "Log",
-                                    tint = Color(0xFF64748B),
+                                    tint = accent.primary,
                                     modifier = Modifier.size(14.dp)
                                 )
                             }
@@ -2028,7 +2033,7 @@ fun FolderDeleterDashboard(
 
                         Box(
                             modifier = Modifier
-                                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(6.dp))
+                                .border(1.dp, accent.primary.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2054,8 +2059,8 @@ fun FolderDeleterDashboard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
-                            .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                            .background(accent.container.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                            .border(1.dp, accent.primary.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
                             .padding(12.dp)
                     ) {
                         if (logs.isEmpty()) {

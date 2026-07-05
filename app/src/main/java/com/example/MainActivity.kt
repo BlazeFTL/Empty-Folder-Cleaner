@@ -1504,7 +1504,7 @@ fun FolderDeleterDashboard(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(accent.container.copy(alpha = 0.35f))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
             ) {

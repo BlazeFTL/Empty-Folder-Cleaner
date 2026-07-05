@@ -1,0 +1,50 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Folder Background tab -->
+    <path
+        android:fillColor="#BAE6FD"
+        android:pathData="M24,34 h18 l6,6 h36 c3.3,0 6,2.7 6,6 v32 c0,3.3 -2.7,6 -6,6 H24c-3.3,0 -6,-2.7 -6,-6 V40C18,36.7 20.7,34 24,34z" />
+
+    <!-- Document/Paper inside the folder (slipping out slightly) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,28 h44 c2.2,0 4,1.8 4,4 v24 H28 V32C28,29.8 29.8,28 32,28z" />
+
+    <!-- Folder Front Cover (angled or lower to show depth) -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M24,46 h60 c3.3,0 6,2.7 6,6 v26 c0,3.3 -2.7,6 -6,6 H24c-3.3,0 -6,-2.7 -6,-6 V52C18,48.7 20.7,46 24,46z" />
+
+    <!-- A sparkling magic broom / sweep swoosh -->
+    <!-- Swoosh arc -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M28,68 C45,68 64,54 74,40 L70,36 C60,50 43,62 28,62 Z" />
+
+    <!-- Cute broom bristles -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M73,39 L78,34 L82,38 L77,43 Z" />
+    <!-- Broom handle -->
+    <path
+        android:fillColor="#78350F"
+        android:pathData="M77.5,34.5 L86,26 L89,29 L80.5,37.5 Z" />
+
+    <!-- Sparkles (representing "cleaned") -->
+    <!-- Large Sparkle -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M54,42 L55.5,47 L60.5,48.5 L55.5,50 L54,55 L52.5,50 L47.5,48.5 L52.5,47 Z" />
+    <!-- Medium Sparkle -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M38,52 L39,55 L42,56 L39,57 L38,60 L37,57 L34,56 L37,55 Z" />
+    <!-- Small Sparkle -->
+    <path
+        android:fillColor="#F472B6"
+        android:pathData="M68,58 L69,61 L72,62 L69,63 L68,66 L67,63 L64,62 L67,61 Z" />
+</vector>

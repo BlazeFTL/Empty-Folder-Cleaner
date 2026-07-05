@@ -3,6 +3,6 @@
     <item
         android:width="80dp"
         android:height="80dp"
-        android:drawable="@drawable/ic_spade_icon"
+        android:drawable="@drawable/ic_folder_clean_icon"
         android:gravity="center" />
 </layer-list>

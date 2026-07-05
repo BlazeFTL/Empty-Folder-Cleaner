@@ -943,17 +943,18 @@ fun FolderDeleterDashboard(
         }
     }
 
-    Scaffold(
-        modifier = modifier
-    ) { paddingValues ->
-        if (showSettingsDialog) {
-            val accent = AppAccent.fromName(settings.accentName)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFF3F4F9))
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
+    MyApplicationTheme(accent = accent) {
+        Scaffold(
+            modifier = modifier
+        ) { paddingValues ->
+            if (showSettingsDialog) {
+                val accent = AppAccent.fromName(settings.accentName)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(paddingValues)
+                        .verticalScroll(rememberScrollState())
                     .padding(vertical = 20.dp)
             ) {
                 // Settings Header Panel with Back Arrow Button
@@ -1046,8 +1047,8 @@ fun FolderDeleterDashboard(
 
                 // 1. Clean Android Folders Card
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1111,8 +1112,8 @@ fun FolderDeleterDashboard(
 
                 // Delete Folders Containing Only .nomedia
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1176,8 +1177,8 @@ fun FolderDeleterDashboard(
 
                 // Hide Preview Mode Card
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1241,8 +1242,8 @@ fun FolderDeleterDashboard(
 
                 // 2. Root Access Card
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1308,8 +1309,8 @@ fun FolderDeleterDashboard(
 
                 // 3. Custom External Storage Location Card
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1529,11 +1530,11 @@ fun FolderDeleterDashboard(
 
                     Card(
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isPermissionGranted) Color(0xFFECFDF5) else Color(0xFFFEF2F2)
+                            containerColor = if (isPermissionGranted) accent.container else Color(0xFFFEF2F2)
                         ),
                         border = BorderStroke(
                             1.dp,
-                            if (isPermissionGranted) Color(0xFFA7F3D0) else Color(0xFFFCA5A5)
+                            if (isPermissionGranted) accent.border else Color(0xFFFCA5A5)
                         ),
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier
@@ -1552,7 +1553,7 @@ fun FolderDeleterDashboard(
                             Icon(
                                 imageVector = if (isPermissionGranted) Icons.Default.CheckCircle else Icons.Default.Warning,
                                 contentDescription = null,
-                                tint = if (isPermissionGranted) Color(0xFF10B981) else Color(0xFFEF4444),
+                                tint = if (isPermissionGranted) accent.primary else Color(0xFFEF4444),
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -1560,7 +1561,7 @@ fun FolderDeleterDashboard(
                                 text = if (isPermissionGranted) "Access: Granted" else "Access: Denied",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isPermissionGranted) Color(0xFF065F46) else Color(0xFF991B1B)
+                                color = if (isPermissionGranted) accent.text else Color(0xFF991B1B)
                             )
                         }
                     }
@@ -1589,7 +1590,7 @@ fun FolderDeleterDashboard(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
@@ -1639,7 +1640,7 @@ fun FolderDeleterDashboard(
                 }
 
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
@@ -1696,7 +1697,7 @@ fun FolderDeleterDashboard(
 
                 if (settings.enableExternalStorage) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier
@@ -1757,7 +1758,7 @@ fun FolderDeleterDashboard(
             // ==========================================
             if (!settings.hideDryRun) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
@@ -1808,7 +1809,7 @@ fun FolderDeleterDashboard(
                 val progressState = screenState as? ScreenState.ScanInProgress
                 progressState?.let { progress ->
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier
@@ -1994,7 +1995,7 @@ fun FolderDeleterDashboard(
             // Deletion Log Card (White Background, minimal)
             // ==========================================
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier
@@ -2092,7 +2093,7 @@ fun FolderDeleterDashboard(
                             ) {
                                 items(logs.size) { index ->
                                     val log = logs[index]
-                                    ConsoleLogLine(log = log)
+                                    ConsoleLogLine(log = log, accent = accent)
                                 }
                             }
                         }
@@ -2162,6 +2163,7 @@ fun FolderDeleterDashboard(
     }
 
 
+    }
 }
 
 // ==========================================
@@ -2169,12 +2171,12 @@ fun FolderDeleterDashboard(
 // ==========================================
 
 @Composable
-fun ConsoleLogLine(log: LogEntry) {
+fun ConsoleLogLine(log: LogEntry, accent: AppAccent) {
     val chipColor = when (log) {
         is LogEntry.Success -> if (log.isDryRun) Color(0xFF8B5CF6) else Color(0xFF10B981) // Violet/Purple for EMPTY, Green for DELETED
         is LogEntry.Error -> Color(0xFFEF4444)
         is LogEntry.ScanProgress -> Color(0xFF64748B)
-        is LogEntry.Info -> Color(0xFF3B82F6)
+        is LogEntry.Info -> accent.primary
     }
 
     val label = when (log) {
@@ -2185,20 +2187,20 @@ fun ConsoleLogLine(log: LogEntry) {
     }
 
     val rowBgColor = when (log) {
-        is LogEntry.Info -> Color(0xFFEFF6FF)  // Light blue tint for System status
+        is LogEntry.Info -> accent.container  // Light theme-colored container tint for System status
         is LogEntry.Error -> Color(0xFFFEF2F2) // Light red tint for System error
         else -> Color.Transparent              // Transparent for standard scanned/deleted items
     }
 
     val rowBorder = when (log) {
-        is LogEntry.Info -> BorderStroke(1.dp, Color(0xFFDBEAFE))
+        is LogEntry.Info -> BorderStroke(1.dp, accent.border)
         is LogEntry.Error -> BorderStroke(1.dp, Color(0xFFFEE2E2))
         else -> null
     }
 
     val textWeight = if (log is LogEntry.Info || log is LogEntry.Error) FontWeight.SemiBold else FontWeight.Normal
     val textColor = when (log) {
-        is LogEntry.Info -> Color(0xFF1E40AF)
+        is LogEntry.Info -> accent.text
         is LogEntry.Error -> Color(0xFF991B1B)
         else -> Color(0xFF475569) // Standard slate-dark text color for file paths
     }

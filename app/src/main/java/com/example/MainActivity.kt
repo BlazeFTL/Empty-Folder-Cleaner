@@ -925,7 +925,7 @@ fun FolderDeleterDashboard(
     MyApplicationTheme(accent = accent) {
         androidx.compose.material3.Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color.White
+            color = MaterialTheme.colorScheme.background
         ) {
             Scaffold(
                 modifier = modifier,

@@ -29,9 +29,9 @@ fun MyApplicationTheme(
             secondary = accent.primary,
             secondaryContainer = accent.container,
             tertiary = accent.text,
-            background = accent.container.copy(alpha = 0.35f),
-            surface = accent.container.copy(alpha = 0.95f), // Dynamic surface background matching theme accent
-            surfaceVariant = accent.container.copy(alpha = 0.85f),
+            background = accent.container, // Fully opaque soft pastel background matching theme accent
+            surface = Color.White,          // Clean white surface for cards to create premium, high-contrast elevation
+            surfaceVariant = Color.White,
             onPrimary = Color.White,
             onSecondary = Color.White,
             onTertiary = Color.White,

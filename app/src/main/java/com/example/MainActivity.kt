@@ -923,9 +923,14 @@ fun FolderDeleterDashboard(
     }
 
     MyApplicationTheme(accent = accent) {
-        Scaffold(
-            modifier = modifier
-        ) { paddingValues ->
+        androidx.compose.material3.Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color.White
+        ) {
+            Scaffold(
+                modifier = modifier,
+                containerColor = Color.Transparent
+            ) { paddingValues ->
             if (showSettingsDialog) {
                 val accent = AppAccent.fromName(settings.accentName)
                 Column(
@@ -1241,12 +1246,12 @@ fun FolderDeleterDashboard(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .background(Color(0xFFFEF2F2), shape = RoundedCornerShape(12.dp))
+                                    .background(accent.container, shape = RoundedCornerShape(12.dp))
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Shield,
                                     contentDescription = null,
-                                    tint = Color(0xFFEF4444),
+                                    tint = accent.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -2140,8 +2145,7 @@ fun FolderDeleterDashboard(
             }
         )
     }
-
-
+        }
     }
 }
 

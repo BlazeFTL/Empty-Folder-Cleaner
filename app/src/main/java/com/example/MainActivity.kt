@@ -82,7 +82,11 @@ enum class AppAccent(
     TEAL("Ocean Teal", Color(0xFF0D9488), Color(0xFFF0FDFA), Color(0xFF115E59), Color(0xFF99F6E4)),
     ORANGE("Sunset Orange", Color(0xFFF97316), Color(0xFFFFF7ED), Color(0xFF9A3412), Color(0xFFFFDDB3)),
     INDIGO("Deep Indigo", Color(0xFF4F46E5), Color(0xFFE0E7FF), Color(0xFF3730A3), Color(0xFFC7D2FE)),
-    PINK("Rose Pink", Color(0xFFDB2777), Color(0xFFFFF1F2), Color(0xFF9F1239), Color(0xFFFECDD3));
+    PINK("Rose Pink", Color(0xFFDB2777), Color(0xFFFFF1F2), Color(0xFF9F1239), Color(0xFFFECDD3)),
+    MIDNIGHT_MINT("Midnight Mint", Color(0xFF4F46E5), Color(0xFFECFDF5), Color(0xFF1E1B4B), Color(0xFFA7F3D0)),
+    NEON_SYNTH("Neon Synth", Color(0xFF9333EA), Color(0xFFECFEFF), Color(0xFF581C87), Color(0xFF99F6E4)),
+    CYBER_CITRUS("Cyber Citrus", Color(0xFFF43F5E), Color(0xFFFEFCE8), Color(0xFF881337), Color(0xFFFEF08A)),
+    COSMIC_LAVENDER("Cosmic Lavender", Color(0xFF7C3AED), Color(0xFFF0F9FF), Color(0xFF4C1D95), Color(0xFFBAE6FD));
 
     companion object {
         fun fromName(name: String): AppAccent {
@@ -354,38 +358,95 @@ class FolderDeleterViewModel : ViewModel() {
         isCancelled: () -> Boolean
     ) {
         onLog(LogEntry.Info("[ROOT ENGINE] Scanning directories at ultra-fast speeds using superuser privileges..."))
-        
+
+        val rootPathEscaped = root.absolutePath.replace("\"", "\\\"")
+        val script = """
+            find "$rootPathEscaped" -type d | while read -r d; do
+                [ "${'$'}d" = "$rootPathEscaped" ] && continue
+                
+                if [ "$cleanAndroidFolder" = "false" ]; then
+                    case "${'$'}d" in
+                        */Android|*/Android/*) continue ;;
+                    esac
+                fi
+                
+                if [ "$deleteHidden" = "false" ]; then
+                    case "${'$'}d" in
+                        */.*|*/.*/*) continue ;;
+                    esac
+                fi
+                
+                [ -d "${'$'}d" ] || continue
+                
+                is_empty=1
+                files_to_delete=""
+                
+                for f in "${'$'}d"/.* "${'$'}d"/*; do
+                    [ -e "${'$'}f" ] || continue
+                    
+                    name="${'$'}{f##*/}"
+                    [ "${'$'}name" = "." ] && continue
+                    [ "${'$'}name" = ".." ] && continue
+                    [ "${'$'}name" = "*" ] && continue
+                    [ "${'$'}name" = ".*" ] && continue
+                    
+                    if [ -d "${'$'}f" ]; then
+                        is_empty=0
+                        break
+                    fi
+                    
+                    is_useless=0
+                    if [ "$treatNoMediaAsEmpty" = "true" ] && [ "${'$'}name" = ".nomedia" ]; then
+                        is_useless=1
+                    elif [ "$deleteHidden" = "true" ] && case "${'$'}name" in .*) true;; *) false;; esac; then
+                        is_useless=1
+                    elif [ "$treatEmptyFilesAsEmpty" = "true" ] && [ ! -s "${'$'}f" ]; then
+                        is_useless=1
+                    fi
+                    
+                    if [ "${'$'}is_useless" = "1" ]; then
+                        files_to_delete="${'$'}files_to_delete\"${'$'}f\" "
+                    else
+                        is_empty=0
+                        break
+                    fi
+                done
+                
+                if [ "${'$'}is_empty" = "1" ]; then
+                    echo "EMPTY_DIR:${'$'}d|${'$'}files_to_delete"
+                fi
+            done
+        """.trimIndent()
+
         val process = try {
-            Runtime.getRuntime().exec(arrayOf("su", "-c", "find \"${root.absolutePath}\" -type d"))
+            Runtime.getRuntime().exec(arrayOf("su", "-c", script))
         } catch (e: Exception) {
-            onLog(LogEntry.Error("[ROOT] Failed to run find command via su: ${e.localizedMessage}. Falling back to standard JVM scanner."))
+            onLog(LogEntry.Error("[ROOT] Failed to run optimized root scanner: ${e.localizedMessage}. Falling back to standard JVM scanner."))
             cleanDirectoryRecursive(root, deleteHidden, treatNoMediaAsEmpty, treatEmptyFilesAsEmpty, dryRun, cleanAndroidFolder, stats, onLog, isCancelled)
             return
         }
 
         val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
-        val dirsList = mutableListOf<String>()
+        val discoveredEmptyDirs = mutableListOf<Pair<String, String>>() // Pair of (dirPath, filesToDelete)
+        
         try {
             var line: String?
             while (reader.readLine().also { line = it } != null) {
                 if (isCancelled()) break
-                val path = line?.trim() ?: continue
-                if (path.isEmpty() || path == root.absolutePath) continue
-                
-                val lastSegment = path.substringAfterLast("/")
-                if (!cleanAndroidFolder && (lastSegment.equals("Android", ignoreCase = true) || path.contains("/Android/data") || path.contains("/Android/obb"))) {
-                    continue
+                val trimmedLine = line?.trim() ?: continue
+                if (trimmedLine.startsWith("EMPTY_DIR:")) {
+                    val content = trimmedLine.removePrefix("EMPTY_DIR:")
+                    val parts = content.split('|', limit = 2)
+                    if (parts.isNotEmpty()) {
+                        val dirPath = parts[0]
+                        val filesToDelete = if (parts.size > 1) parts[1] else ""
+                        discoveredEmptyDirs.add(Pair(dirPath, filesToDelete))
+                    }
                 }
-                
-                if (lastSegment.startsWith(".") && !deleteHidden) {
-                    continue
-                }
-                
-                dirsList.add(path)
             }
             process.waitFor()
         } catch (e: Exception) {
-            onLog(LogEntry.Error("[ROOT] Error during directory discovery: ${e.localizedMessage}"))
+            onLog(LogEntry.Error("[ROOT] Error during optimized directory discovery: ${e.localizedMessage}"))
         } finally {
             try { reader.close() } catch (ignored: Exception) {}
             process.destroy()
@@ -393,120 +454,37 @@ class FolderDeleterViewModel : ViewModel() {
 
         if (isCancelled()) return
 
-        // Sort bottom-up (deepest directories first)
-        dirsList.sortByDescending { it.length }
+        // Sort by length descending to process deepest directories first
+        discoveredEmptyDirs.sortByDescending { it.first.length }
 
-        onLog(LogEntry.Info("[ROOT] Discovered ${dirsList.size} directories. Analyzing for empty states..."))
+        onLog(LogEntry.Info("[ROOT] Discovered ${discoveredEmptyDirs.size} empty directories. Proceeding with deletion..."))
 
-        for (dirPath in dirsList) {
+        for ((dirPath, filesToDelete) in discoveredEmptyDirs) {
             if (isCancelled()) return
             stats.scannedFolders++
             onLog(LogEntry.ScanProgress(dirPath))
 
-            val dirFile = File(dirPath)
-            val listFiles = try {
-                val lsProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "ls -a \"$dirPath\""))
-                val lsReader = java.io.BufferedReader(java.io.InputStreamReader(lsProcess.inputStream))
-                val names = mutableListOf<String>()
-                var nameLine: String?
-                while (lsReader.readLine().also { nameLine = it } != null) {
-                    val trimmed = nameLine?.trim() ?: continue
-                    if (trimmed != "." && trimmed != "..") {
-                        names.add(trimmed)
-                    }
-                }
-                lsProcess.waitFor()
-                names
-            } catch (e: Exception) {
-                dirFile.list()?.toList() ?: emptyList()
-            }
-
-            var isCurrentlyEmpty = listFiles.isEmpty()
-            val filesToDelete = mutableListOf<String>()
-
-            if (!isCurrentlyEmpty) {
-                var canEmpty = true
-                for (fileName in listFiles) {
-                    val childPath = "$dirPath/$fileName"
-                    val isDir = try {
-                        val testProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "[ -d \"$childPath\" ] && echo \"yes\""))
-                        val testReader = java.io.BufferedReader(java.io.InputStreamReader(testProcess.inputStream))
-                        val res = testReader.readLine()?.trim()
-                        testProcess.waitFor()
-                        res == "yes"
-                    } catch (e: Exception) {
-                        File(childPath).isDirectory
-                    }
-
-                    if (isDir) {
-                        canEmpty = false
-                        break
+            if (dryRun) {
+                stats.deletedFolders++
+                onLog(LogEntry.Success(dirPath, dirPath, isDryRun = true))
+            } else {
+                val rmDirSuccess = try {
+                    val cmd = if (filesToDelete.trim().isNotEmpty()) {
+                        "rm -f $filesToDelete && rmdir \"$dirPath\""
                     } else {
-                        val isNoMedia = fileName.equals(".nomedia", ignoreCase = true)
-                        val isHiddenFile = fileName.startsWith(".")
-                        
-                        val fileLength = try {
-                            val lenProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "stat -c %s \"$childPath\""))
-                            val lenReader = java.io.BufferedReader(java.io.InputStreamReader(lenProcess.inputStream))
-                            val lenStr = lenReader.readLine()?.trim() ?: "0"
-                            lenProcess.waitFor()
-                            lenStr.toLongOrNull() ?: 0L
-                        } catch (e: Exception) {
-                            File(childPath).length()
-                        }
-                        
-                        val isEmptyFile = fileLength == 0L
-
-                        val isUseless = (treatNoMediaAsEmpty && isNoMedia) ||
-                                (deleteHidden && isHiddenFile && !isNoMedia) ||
-                                (treatEmptyFilesAsEmpty && isEmptyFile)
-
-                        if (isUseless) {
-                            filesToDelete.add(childPath)
-                        } else {
-                            canEmpty = false
-                            break
-                        }
+                        "rmdir \"$dirPath\""
                     }
+                    val rmProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+                    rmProcess.waitFor() == 0
+                } catch (e: Exception) {
+                    File(dirPath).delete()
                 }
-                if (canEmpty) {
-                    isCurrentlyEmpty = true
-                }
-            }
 
-            if (isCurrentlyEmpty) {
-                val dirName = dirPath.substringAfterLast("/")
-                if (dryRun) {
+                if (rmDirSuccess) {
                     stats.deletedFolders++
-                    onLog(LogEntry.Success(dirPath, dirPath, isDryRun = true))
+                    onLog(LogEntry.Success("Removed: $dirPath", dirPath, isDryRun = false))
                 } else {
-                    var fileCleanupSuccess = true
-                    for (filePath in filesToDelete) {
-                        val rmFileSuccess = try {
-                            val rmProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "rm -f \"$filePath\""))
-                            rmProcess.waitFor() == 0
-                        } catch (e: Exception) {
-                            File(filePath).delete()
-                        }
-                        if (!rmFileSuccess) {
-                            fileCleanupSuccess = false
-                            onLog(LogEntry.Error("Unable to clean file inside root: ${filePath.substringAfterLast("/")}"))
-                        }
-                    }
-                    if (fileCleanupSuccess) {
-                        val rmDirSuccess = try {
-                            val rmProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "rmdir \"$dirPath\""))
-                            rmProcess.waitFor() == 0
-                        } catch (e: Exception) {
-                            dirFile.delete()
-                        }
-                        if (rmDirSuccess) {
-                            stats.deletedFolders++
-                            onLog(LogEntry.Success("Removed: $dirPath", dirPath, isDryRun = false))
-                        } else {
-                            onLog(LogEntry.Error("Failed to remove root directory: $dirPath"))
-                        }
-                    }
+                    onLog(LogEntry.Error("Failed to remove root directory: $dirPath"))
                 }
             }
         }
@@ -630,7 +608,8 @@ class FolderDeleterViewModel : ViewModel() {
         }
 
         // Check folder contents again after cleaning nested directories
-        val remainingChildren = dir.listFiles() ?: emptyArray()
+        val remainingChildren = dir.listFiles()
+        if (remainingChildren == null) return
         var isCurrentlyEmpty = remainingChildren.isEmpty()
         val filesToDelete = mutableListOf<File>()
 
@@ -1886,7 +1865,7 @@ fun FolderDeleterDashboard(
                             Button(
                                 onClick = { viewModel.cancelScan() },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFEF4444),
+                                    containerColor = accent.primary,
                                     contentColor = Color.White
                                 ),
                                 shape = RoundedCornerShape(10.dp),
@@ -2289,7 +2268,12 @@ fun AccentOptionCard(
             Box(
                 modifier = Modifier
                     .size(24.dp)
-                    .background(accent.primary, shape = androidx.compose.foundation.shape.CircleShape)
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(accent.primary, accent.border)
+                        ),
+                        shape = androidx.compose.foundation.shape.CircleShape
+                    )
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(

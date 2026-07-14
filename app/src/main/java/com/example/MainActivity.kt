@@ -45,7 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
+import android.app.Application
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.theme.MyApplicationTheme
@@ -141,11 +143,25 @@ data class StorageInfo(
 // Main ViewModel Logic
 // ==========================================
 
-class FolderDeleterViewModel : ViewModel() {
+class FolderDeleterViewModel(application: Application) : AndroidViewModel(application) {
+    private val prefs = application.getSharedPreferences("cleaner_settings", Context.MODE_PRIVATE)
+
     private val _logs = MutableStateFlow<List<LogEntry>>(emptyList())
     val logs: StateFlow<List<LogEntry>> = _logs.asStateFlow()
 
-    private val _settings = MutableStateFlow(CleanerSettings())
+    private val _settings = MutableStateFlow(
+        CleanerSettings(
+            deleteHiddenFolders = prefs.getBoolean("delete_hidden_folders", true),
+            treatNoMediaAsEmpty = prefs.getBoolean("treat_no_media", true),
+            treatEmptyFilesAsEmpty = prefs.getBoolean("treat_empty_files", false),
+            dryRun = prefs.getBoolean("dry_run", false),
+            cleanAndroidFolder = prefs.getBoolean("clean_android", false),
+            hideDryRun = prefs.getBoolean("hide_dry_run", false),
+            accentName = prefs.getString("accent_name", "Breeze Blue") ?: "Breeze Blue",
+            enableExternalStorage = prefs.getBoolean("enable_external", false),
+            externalStorageUri = prefs.getString("external_uri", "") ?: ""
+        )
+    )
     val settings: StateFlow<CleanerSettings> = _settings.asStateFlow()
 
     private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Idle)
@@ -157,7 +173,22 @@ class FolderDeleterViewModel : ViewModel() {
     private var scanJob: Job? = null
 
     fun updateSettings(updater: (CleanerSettings) -> CleanerSettings) {
-        _settings.update(updater)
+        _settings.update { current ->
+            val next = updater(current)
+            prefs.edit().apply {
+                putBoolean("delete_hidden_folders", next.deleteHiddenFolders)
+                putBoolean("treat_no_media", next.treatNoMediaAsEmpty)
+                putBoolean("treat_empty_files", next.treatEmptyFilesAsEmpty)
+                putBoolean("dry_run", next.dryRun)
+                putBoolean("clean_android", next.cleanAndroidFolder)
+                putBoolean("hide_dry_run", next.hideDryRun)
+                putString("accent_name", next.accentName)
+                putBoolean("enable_external", next.enableExternalStorage)
+                putString("external_uri", next.externalStorageUri)
+                apply()
+            }
+            next
+        }
     }
 
     fun clearLogs() {
@@ -364,6 +395,11 @@ class FolderDeleterViewModel : ViewModel() {
             find "$rootPathEscaped" -type d | while read -r d; do
                 [ "${'$'}d" = "$rootPathEscaped" ] && continue
                 
+                # Never delete standard Android system folders themselves
+                case "${'$'}d" in
+                    */Android|*/Android/data|*/Android/obb|*/Android/media|*/Android/|*/Android/data/|*/Android/obb/|*/Android/media/) continue ;;
+                esac
+
                 if [ "$cleanAndroidFolder" = "false" ]; then
                     case "${'$'}d" in
                         */Android|*/Android/*) continue ;;
@@ -461,6 +497,16 @@ class FolderDeleterViewModel : ViewModel() {
 
         for ((dirPath, filesToDelete) in discoveredEmptyDirs) {
             if (isCancelled()) return
+            
+            val cleanPath = dirPath.replace("\\", "/").trimEnd('/')
+            val isSystemRoot = cleanPath.endsWith("/Android", ignoreCase = true) ||
+                    cleanPath.endsWith("/Android/data", ignoreCase = true) ||
+                    cleanPath.endsWith("/Android/obb", ignoreCase = true) ||
+                    cleanPath.endsWith("/Android/media", ignoreCase = true)
+            if (isSystemRoot) {
+                continue
+            }
+
             stats.scannedFolders++
             onLog(LogEntry.ScanProgress(dirPath))
 
@@ -644,6 +690,14 @@ class FolderDeleterViewModel : ViewModel() {
 
         if (isCurrentlyEmpty) {
             val path = dir.absolutePath
+            val cleanPath = path.replace("\\", "/").trimEnd('/')
+            val isSystemRoot = cleanPath.endsWith("/Android", ignoreCase = true) ||
+                    cleanPath.endsWith("/Android/data", ignoreCase = true) ||
+                    cleanPath.endsWith("/Android/obb", ignoreCase = true) ||
+                    cleanPath.endsWith("/Android/media", ignoreCase = true)
+            if (isSystemRoot) {
+                return
+            }
             if (dryRun) {
                 stats.deletedFolders++
                 onLog(LogEntry.Success(path, path, isDryRun = true))
@@ -759,6 +813,16 @@ class FolderDeleterViewModel : ViewModel() {
         }
 
         if (isCurrentlyEmpty) {
+            val isSystemRoot = dirName.equals("Android", ignoreCase = true) ||
+                    fullPath.replace("\\", "/").trimEnd('/').let { p ->
+                        p.endsWith("/Android", ignoreCase = true) ||
+                        p.endsWith("/Android/data", ignoreCase = true) ||
+                        p.endsWith("/Android/obb", ignoreCase = true) ||
+                        p.endsWith("/Android/media", ignoreCase = true)
+                    }
+            if (isSystemRoot) {
+                return
+            }
             if (dryRun) {
                 stats.deletedFolders++
                 onLog(LogEntry.Success(fullPath, dir.uri.toString(), isDryRun = true))

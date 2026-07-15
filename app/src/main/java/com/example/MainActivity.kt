@@ -951,7 +951,7 @@ fun FolderDeleterDashboard(
     ) { uri: Uri? ->
         if (uri != null) {
             viewModel.addInfoLog("Folder access acquired via system dialog.")
-            viewModel.addInfoLog("Tip: If 'Use this folder' is disabled at storage root, you can select any directory, or use the DELETE - INTERNAL option.")
+            viewModel.addInfoLog("Tip: If 'Use this folder' is disabled at storage root, you can select any directory, or use the DELETE - Internal option.")
             viewModel.startDocumentTreeScan(context, uri)
         } else {
             viewModel.addInfoLog("Folder picker selection cancelled.")
@@ -1678,7 +1678,7 @@ fun FolderDeleterDashboard(
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                text = "Delete Empty Folders - INTERNAL",
+                                text = "Delete Empty Folders - Internal",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 color = Color(0xFF0F172A)

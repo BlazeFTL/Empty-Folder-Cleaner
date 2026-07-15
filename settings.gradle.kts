@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Empty Folder Cleaner"
+rootProject.name = "My Application"
 
 include(":app")

@@ -15,31 +15,13 @@ import com.example.AppAccent
 @Composable
 fun MyApplicationTheme(
     accent: AppAccent = AppAccent.BLUE,
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false,
+    darkTheme: Boolean = false, // Enforce light theme by default as per user request
+    dynamicColor: Boolean = false, // Set to false to prioritize our handcrafted Clean Breeze theme
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val context = LocalContext.current
         if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    } else if (darkTheme) {
-        darkColorScheme(
-            primary = accent.primary,
-            primaryContainer = accent.primary.copy(alpha = 0.15f),
-            secondary = accent.primary,
-            secondaryContainer = accent.primary.copy(alpha = 0.1f),
-            tertiary = accent.text,
-            background = Color(0xFF090D16), // Deep Cyber Obsidian Navy
-            surface = Color(0xFF131B2E),    // Slate Glass Navy Card
-            surfaceVariant = Color(0xFF1E293B),
-            onPrimary = Color.White,
-            onSecondary = Color.White,
-            onTertiary = Color.White,
-            onBackground = Color(0xFFF8FAFC),
-            onSurface = Color(0xFFF1F5F9),
-            error = ErrorRed,
-            onError = Color.White
-        )
     } else {
         lightColorScheme(
             primary = accent.primary,
@@ -47,14 +29,14 @@ fun MyApplicationTheme(
             secondary = accent.primary,
             secondaryContainer = accent.container,
             tertiary = accent.text,
-            background = accent.container.copy(alpha = 0.35f), // Soft pastel background matching theme accent
-            surface = Color.White,          // Clean white surface for cards
-            surfaceVariant = Color(0xFFF8FAFC),
+            background = accent.container, // Fully opaque soft pastel background matching theme accent
+            surface = Color.White,          // Clean white surface for cards to create premium, high-contrast elevation
+            surfaceVariant = Color.White,
             onPrimary = Color.White,
             onSecondary = Color.White,
             onTertiary = Color.White,
-            onBackground = Color(0xFF0F172A),
-            onSurface = Color(0xFF0F172A),
+            onBackground = accent.text,
+            onSurface = accent.text,
             error = ErrorRed,
             onError = Color.White
         )

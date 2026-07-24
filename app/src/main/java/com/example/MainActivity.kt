@@ -236,16 +236,15 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
 
     fun attemptRootRequest() {
         viewModelScope.launch(Dispatchers.IO) {
-            addInfoLog("Requesting superuser (SU) privileges...")
             val success = requestRootAccess()
             if (success) {
                 _rootAccessGranted.value = true
                 prefs.edit().putBoolean("root_access_enabled", true).apply()
-                addInfoLog("Root access successfully acquired! Direct /data/media/0/ ext4/f2fs bypass enabled.")
+                addOrReplaceRootLog("Root access enabled — High-speed direct scan active.")
             } else {
                 _rootAccessGranted.value = false
                 prefs.edit().putBoolean("root_access_enabled", false).apply()
-                addInfoLog("Failed to acquire root access. Ensure device is rooted and SU is granted.")
+                addOrReplaceRootLog("Failed to acquire root access. Ensure device is rooted and SU is granted.")
             }
         }
     }
@@ -253,7 +252,20 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
     fun disableRootAccess() {
         _rootAccessGranted.value = false
         prefs.edit().putBoolean("root_access_enabled", false).apply()
-        addInfoLog("Root access option disabled.")
+        addOrReplaceRootLog("Root access option disabled.")
+    }
+
+    private fun addOrReplaceRootLog(msg: String) {
+        _logs.update { list ->
+            val filtered = list.filterNot { entry ->
+                entry is LogEntry.Info && (
+                    entry.text.contains("superuser", ignoreCase = true) ||
+                    entry.text.contains("Root access", ignoreCase = true) ||
+                    entry.text.contains("SU root", ignoreCase = true)
+                )
+            }
+            filtered + LogEntry.Info(msg)
+        }
     }
 
     private fun requestRootAccess(): Boolean {
@@ -1336,15 +1348,84 @@ fun FolderDeleterDashboard(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
                     shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
                 ) {
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(accent.container, shape = RoundedCornerShape(12.dp))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Shield,
+                                    contentDescription = null,
+                                    tint = accent.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    text = "Root Access",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF0F172A)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (rootAccessGranted) "Superuser privileges active" else "Grant SU root access for ultra-fast scanning and deletion",
+                                    fontSize = 11.sp,
+                                    color = if (rootAccessGranted) Color(0xFF10B981) else Color(0xFF64748B)
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = rootAccessGranted,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    viewModel.attemptRootRequest()
+                                } else {
+                                    viewModel.disableRootAccess()
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = accent.primary,
+                                uncheckedThumbColor = Color(0xFF94A3B8),
+                                uncheckedTrackColor = Color(0xFFE2E8F0)
+                            ),
+                            modifier = Modifier.testTag("root_access_switch")
+                        )
+                    }
+                }
+
+                // Direct /data/media/ Scan Card (Visible when Root Access is active)
+                if (rootAccessGranted) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -1359,7 +1440,7 @@ fun FolderDeleterDashboard(
                                         .background(accent.container, shape = RoundedCornerShape(12.dp))
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Shield,
+                                        imageVector = Icons.Default.Bolt,
                                         contentDescription = null,
                                         tint = accent.primary,
                                         modifier = Modifier.size(20.dp)
@@ -1368,27 +1449,23 @@ fun FolderDeleterDashboard(
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Column {
                                     Text(
-                                        text = "Root Access",
+                                        text = "Direct /data/media/ Scan",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp,
                                         color = Color(0xFF0F172A)
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = if (rootAccessGranted) "Superuser privileges active" else "Grant SU root access for system directories",
+                                        text = "Scan physical ext4/f2fs storage directly to bypass FUSE filesystem lag",
                                         fontSize = 11.sp,
-                                        color = if (rootAccessGranted) Color(0xFF10B981) else Color(0xFF64748B)
+                                        color = Color(0xFF64748B)
                                     )
                                 }
                             }
                             Switch(
-                                checked = rootAccessGranted,
-                                onCheckedChange = { checked ->
-                                    if (checked) {
-                                        viewModel.attemptRootRequest()
-                                    } else {
-                                        viewModel.disableRootAccess()
-                                    }
+                                checked = settings.scanDirectDataMedia,
+                                onCheckedChange = { value ->
+                                    viewModel.updateSettings { it.copy(scanDirectDataMedia = value) }
                                 },
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = Color.White,
@@ -1396,53 +1473,8 @@ fun FolderDeleterDashboard(
                                     uncheckedThumbColor = Color(0xFF94A3B8),
                                     uncheckedTrackColor = Color(0xFFE2E8F0)
                                 ),
-                                modifier = Modifier.testTag("root_access_switch")
+                                modifier = Modifier.testTag("direct_data_media_switch")
                             )
-                        }
-
-                        if (rootAccessGranted) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(1.dp)
-                                    .background(Color(0xFFF1F5F9))
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Direct /data/media/ Scan",
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF0F172A)
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "Scans physical ext4/f2fs filesystem (/data/media/0/) directly, bypassing FUSE virtual filesystem slowdowns",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF64748B)
-                                    )
-                                }
-                                Switch(
-                                    checked = settings.scanDirectDataMedia,
-                                    onCheckedChange = { value ->
-                                        viewModel.updateSettings { it.copy(scanDirectDataMedia = value) }
-                                    },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = accent.primary,
-                                        uncheckedThumbColor = Color(0xFF94A3B8),
-                                        uncheckedTrackColor = Color(0xFFE2E8F0)
-                                    ),
-                                    modifier = Modifier.testTag("direct_data_media_switch")
-                                )
-                            }
                         }
                     }
                 }

@@ -106,7 +106,8 @@ data class CleanerSettings(
     val hideDryRun: Boolean = false,
     val accentName: String = "Breeze Blue",
     val enableExternalStorage: Boolean = false,
-    val externalStorageUri: String = ""
+    val externalStorageUri: String = "",
+    val scanDirectDataMedia: Boolean = true
 )
 
 sealed interface ScreenState {
@@ -159,7 +160,8 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
             hideDryRun = prefs.getBoolean("hide_dry_run", false),
             accentName = prefs.getString("accent_name", "Breeze Blue") ?: "Breeze Blue",
             enableExternalStorage = prefs.getBoolean("enable_external", false),
-            externalStorageUri = prefs.getString("external_uri", "") ?: ""
+            externalStorageUri = prefs.getString("external_uri", "") ?: "",
+            scanDirectDataMedia = prefs.getBoolean("scan_direct_data_media", true)
         )
     )
     val settings: StateFlow<CleanerSettings> = _settings.asStateFlow()
@@ -171,6 +173,16 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
     val storageInfo: StateFlow<StorageInfo?> = _storageInfo.asStateFlow()
 
     private var scanJob: Job? = null
+
+    init {
+        if (prefs.getBoolean("root_access_enabled", false)) {
+            viewModelScope.launch(Dispatchers.IO) {
+                if (requestRootAccess()) {
+                    _rootAccessGranted.value = true
+                }
+            }
+        }
+    }
 
     fun updateSettings(updater: (CleanerSettings) -> CleanerSettings) {
         _settings.update { current ->
@@ -185,6 +197,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
                 putString("accent_name", next.accentName)
                 putBoolean("enable_external", next.enableExternalStorage)
                 putString("external_uri", next.externalStorageUri)
+                putBoolean("scan_direct_data_media", next.scanDirectDataMedia)
                 apply()
             }
             next
@@ -227,9 +240,11 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
             val success = requestRootAccess()
             if (success) {
                 _rootAccessGranted.value = true
-                addInfoLog("Root access successfully acquired! Superuser actions unlocked.")
+                prefs.edit().putBoolean("root_access_enabled", true).apply()
+                addInfoLog("Root access successfully acquired! Direct /data/media/0/ ext4/f2fs bypass enabled.")
             } else {
                 _rootAccessGranted.value = false
+                prefs.edit().putBoolean("root_access_enabled", false).apply()
                 addInfoLog("Failed to acquire root access. Ensure device is rooted and SU is granted.")
             }
         }
@@ -237,6 +252,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
 
     fun disableRootAccess() {
         _rootAccessGranted.value = false
+        prefs.edit().putBoolean("root_access_enabled", false).apply()
         addInfoLog("Root access option disabled.")
     }
 
@@ -252,6 +268,26 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
             false
         } finally {
             process?.destroy()
+        }
+    }
+
+    private fun getEffectiveRootForScan(root: File, scanDirectDataMedia: Boolean): File {
+        if (!_rootAccessGranted.value || !scanDirectDataMedia) return root
+        val path = root.absolutePath
+        return when {
+            path == "/storage/emulated/0" || path == "/storage/emulated/0/" || path == "/sdcard" || path == "/sdcard/" -> {
+                File("/data/media/0")
+            }
+            path.startsWith("/storage/emulated/") -> {
+                val userId = path.removePrefix("/storage/emulated/").substringBefore('/')
+                if (userId.isNotEmpty() && userId.all { it.isDigit() }) {
+                    val subPath = path.removePrefix("/storage/emulated/$userId")
+                    File("/data/media/$userId$subPath")
+                } else {
+                    File("/data/media/0")
+                }
+            }
+            else -> root
         }
     }
 
@@ -297,14 +333,21 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
         scanJob?.cancel()
         clearLogs()
         val currentSettings = _settings.value
-        addLog(LogEntry.Info("Initializing delete on storage path: ${root.absolutePath}"))
+        val targetRoot = getEffectiveRootForScan(root, currentSettings.scanDirectDataMedia)
+
+        if (targetRoot.absolutePath != root.absolutePath) {
+            addLog(LogEntry.Info("[ROOT ENGINE] Bypassing FUSE virtual filesystem slowdowns (${root.absolutePath}). Targeting direct ext4/f2fs storage path: ${targetRoot.absolutePath}"))
+        } else {
+            addLog(LogEntry.Info("Initializing delete on storage path: ${targetRoot.absolutePath}"))
+        }
+
         if (currentSettings.dryRun) {
             addLog(LogEntry.Info("[PREVIEW MODE] Running simulated scan. No folders will be deleted."))
         }
 
         val startTime = System.currentTimeMillis()
         _screenState.value = ScreenState.ScanInProgress(
-            currentPath = root.absolutePath,
+            currentPath = targetRoot.absolutePath,
             scannedCount = 0,
             deletedCount = 0
         )
@@ -314,7 +357,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
             try {
                 if (_rootAccessGranted.value) {
                     cleanDirectoryWithRoot(
-                        root,
+                        targetRoot,
                         deleteHidden = currentSettings.deleteHiddenFolders,
                         treatNoMediaAsEmpty = currentSettings.treatNoMediaAsEmpty,
                         treatEmptyFilesAsEmpty = currentSettings.treatEmptyFilesAsEmpty,
@@ -337,7 +380,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
                     )
                 } else {
                     cleanDirectoryRecursive(
-                        root,
+                        targetRoot,
                         deleteHidden = currentSettings.deleteHiddenFolders,
                         treatNoMediaAsEmpty = currentSettings.treatNoMediaAsEmpty,
                         treatEmptyFilesAsEmpty = currentSettings.treatEmptyFilesAsEmpty,
@@ -361,7 +404,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
                 }
 
                 val duration = System.currentTimeMillis() - startTime
-                addLog(LogEntry.Info("Finished"))
+                addLog(LogEntry.Info("Finished in ${duration}ms"))
 
                 _screenState.value = ScreenState.Finished(
                     totalScanned = stats.scannedFolders,
@@ -1295,63 +1338,112 @@ fun FolderDeleterDashboard(
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(16.dp)
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(accent.container, shape = RoundedCornerShape(12.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Shield,
-                                    contentDescription = null,
-                                    tint = accent.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(accent.container, shape = RoundedCornerShape(12.dp))
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Shield,
+                                        contentDescription = null,
+                                        tint = accent.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column {
+                                    Text(
+                                        text = "Root Access",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF0F172A)
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = if (rootAccessGranted) "Superuser privileges active" else "Grant SU root access for system directories",
+                                        fontSize = 11.sp,
+                                        color = if (rootAccessGranted) Color(0xFF10B981) else Color(0xFF64748B)
+                                    )
+                                }
                             }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column {
-                                Text(
-                                    text = "Root Access",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF0F172A)
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = if (rootAccessGranted) "Superuser privileges active" else "Grant SU root access for system directories",
-                                    fontSize = 11.sp,
-                                    color = if (rootAccessGranted) Color(0xFF10B981) else Color(0xFF64748B)
+                            Switch(
+                                checked = rootAccessGranted,
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        viewModel.attemptRootRequest()
+                                    } else {
+                                        viewModel.disableRootAccess()
+                                    }
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = accent.primary,
+                                    uncheckedThumbColor = Color(0xFF94A3B8),
+                                    uncheckedTrackColor = Color(0xFFE2E8F0)
+                                ),
+                                modifier = Modifier.testTag("root_access_switch")
+                            )
+                        }
+
+                        if (rootAccessGranted) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Color(0xFFF1F5F9))
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Direct /data/media/ Scan",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF0F172A)
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Scans physical ext4/f2fs filesystem (/data/media/0/) directly, bypassing FUSE virtual filesystem slowdowns",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF64748B)
+                                    )
+                                }
+                                Switch(
+                                    checked = settings.scanDirectDataMedia,
+                                    onCheckedChange = { value ->
+                                        viewModel.updateSettings { it.copy(scanDirectDataMedia = value) }
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = accent.primary,
+                                        uncheckedThumbColor = Color(0xFF94A3B8),
+                                        uncheckedTrackColor = Color(0xFFE2E8F0)
+                                    ),
+                                    modifier = Modifier.testTag("direct_data_media_switch")
                                 )
                             }
                         }
-                        Switch(
-                            checked = rootAccessGranted,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    viewModel.attemptRootRequest()
-                                } else {
-                                    viewModel.disableRootAccess()
-                                }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = accent.primary,
-                                uncheckedThumbColor = Color(0xFF94A3B8),
-                                uncheckedTrackColor = Color(0xFFE2E8F0)
-                            ),
-                            modifier = Modifier.testTag("root_access_switch")
-                        )
                     }
                 }
 

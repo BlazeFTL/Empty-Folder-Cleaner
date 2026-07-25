@@ -1140,10 +1140,10 @@ fun FolderDeleterDashboard(
                         Column(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .widthIn(max = 350.dp)
+                                .widthIn(max = 440.dp)
                                 .fillMaxWidth()
                                 .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 14.dp, vertical = 14.dp),
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                         // Header
@@ -1550,14 +1550,14 @@ fun TargetButton(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 13.dp),
+                .padding(horizontal = 10.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
             Box(
                 modifier = Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(9.dp))
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(8.dp))
                     .background(animatedIconBoxBg),
                 contentAlignment = Alignment.Center
             ) {
@@ -1565,14 +1565,14 @@ fun TargetButton(
                     imageVector = icon,
                     contentDescription = null,
                     tint = animatedIconTint,
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier.size(14.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 13.5.sp,
+                fontSize = 13.sp,
                 color = animatedTextColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -2105,10 +2105,10 @@ fun FolderSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .widthIn(max = 350.dp)
+                .widthIn(max = 440.dp)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 14.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         // Settings Header

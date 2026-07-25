@@ -1558,14 +1558,14 @@ fun TargetButton(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 12.dp),
+                .padding(horizontal = 14.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
             Box(
                 modifier = Modifier
-                    .size(26.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(9.dp))
                     .background(animatedIconBoxBg),
                 contentAlignment = Alignment.Center
             ) {
@@ -1573,14 +1573,14 @@ fun TargetButton(
                     imageVector = icon,
                     contentDescription = null,
                     tint = animatedIconTint,
-                    modifier = Modifier.size(13.dp)
+                    modifier = Modifier.size(15.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = title,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 12.5.sp,
+                fontSize = 13.5.sp,
                 color = animatedTextColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

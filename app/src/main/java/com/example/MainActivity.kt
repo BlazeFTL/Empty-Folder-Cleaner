@@ -1186,10 +1186,8 @@ fun FolderDeleterDashboard(
                     ) {
                         Column(
                             modifier = Modifier
-                                .fillMaxHeight()
+                                .fillMaxSize()
                                 .widthIn(max = 500.dp)
-                                .fillMaxWidth()
-                                .verticalScroll(mainScrollState)
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
@@ -1414,10 +1412,10 @@ fun FolderDeleterDashboard(
                             logs = logs,
                             isScanning = screenState is ScreenState.ScanInProgress,
                             accent = accent,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
                         )
-
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
@@ -1899,7 +1897,9 @@ fun LiveLogCard(
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier.padding(18.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(18.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1963,7 +1963,7 @@ fun LiveLogCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 24.dp)
+                        .weight(1f)
                         .testTag("log_idle_message_box"),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1986,11 +1986,11 @@ fun LiveLogCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 140.dp, max = 300.dp)
+                        .weight(1f)
                 ) {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         items(
                             count = logs.size,

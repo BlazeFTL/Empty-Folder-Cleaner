@@ -1028,6 +1028,14 @@ fun FolderDeleterDashboard(
         showSettingsDialog = false
     }
 
+    val mainScrollState = rememberScrollState()
+
+    LaunchedEffect(logs.size) {
+        if (logs.isNotEmpty() && screenState is ScreenState.ScanInProgress) {
+            mainScrollState.animateScrollTo(mainScrollState.maxValue)
+        }
+    }
+
     // Onboarding info display and first-launch permission request
     LaunchedEffect(Unit) {
         isPermissionGranted = checkHasTotalAccess()
@@ -1142,7 +1150,7 @@ fun FolderDeleterDashboard(
                                 .fillMaxHeight()
                                 .widthIn(max = 500.dp)
                                 .fillMaxWidth()
-                                .verticalScroll(rememberScrollState())
+                                .verticalScroll(mainScrollState)
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
@@ -1926,31 +1934,19 @@ fun LiveLogCard(
                     )
                 }
             } else {
-                val listState = rememberLazyListState()
-
-                LaunchedEffect(logs.size) {
-                    if (logs.isNotEmpty()) {
-                        listState.animateScrollToItem(logs.size - 1)
-                    }
-                }
-
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 160.dp, max = 340.dp)
+                        .animateContentSize()
                 ) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(logs.size) { index ->
-                            LogTimelineEntry(
-                                log = logs[index],
-                                accent = accent,
-                                isFirstItem = index == 0,
-                                isLastItem = index == logs.size - 1
-                            )
-                        }
+                    val displayLogs = if (logs.size > 200) logs.takeLast(200) else logs
+                    displayLogs.forEachIndexed { index, log ->
+                        LogTimelineEntry(
+                            log = log,
+                            accent = accent,
+                            isFirstItem = index == 0,
+                            isLastItem = index == displayLogs.size - 1
+                        )
                     }
                 }
             }

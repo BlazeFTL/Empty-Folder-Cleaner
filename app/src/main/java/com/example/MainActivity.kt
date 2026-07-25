@@ -195,7 +195,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
             dryRun = prefs.getBoolean("dry_run", false),
             cleanAndroidFolder = prefs.getBoolean("clean_android", false),
             hideDryRun = prefs.getBoolean("hide_dry_run", false),
-            accentName = AppAccent.fromName(prefs.getString("accent_name", "Breeze Blue") ?: "Breeze Blue").displayName,
+            accentName = AppAccent.fromName(prefs.getString("accent_name", "Concept Ash/Green") ?: "Concept Ash/Green").displayName,
             enableExternalStorage = prefs.getBoolean("enable_external", false),
             externalStorageUri = prefs.getString("external_uri", "") ?: "",
             scanDirectDataMedia = prefs.getBoolean("scan_direct_data_media", true)
@@ -1718,7 +1718,7 @@ fun ProgressCard(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                val cancelBtnColor = if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFFFF6B52) else accent.primary
+                val cancelBtnColor = if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
 
                 OutlinedButton(
                     onClick = onCancel,
@@ -1741,7 +1741,7 @@ fun ProgressCard(
                         modifier = Modifier
                             .size(26.dp)
                             .clip(androidx.compose.foundation.shape.CircleShape)
-                            .background(accent.primary),
+                            .background(if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -1863,19 +1863,27 @@ fun LiveLogCard(
                     color = Color(0xFF12172B)
                 )
 
-                val runningBadgeBg = if (isScanning) {
-                    if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFFE1F8EF) else accent.container
-                } else Color.White
+                val runningBadgeBg = if (accent == AppAccent.CONCEPT_ASH_GREEN) {
+                    Color(0xFFE1F8EF)
+                } else if (isScanning) {
+                    accent.container
+                } else {
+                    Color.White
+                }
 
-                val runningBadgeTint = if (isScanning) {
-                    if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
-                } else Color(0xFF9CA3B8)
+                val runningBadgeTint = if (accent == AppAccent.CONCEPT_ASH_GREEN) {
+                    Color(0xFF00B37E)
+                } else if (isScanning) {
+                    accent.primary
+                } else {
+                    Color(0xFF9CA3B8)
+                }
 
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .background(runningBadgeBg)
-                        .border(1.dp, if (isScanning) runningBadgeBg else Color(0xFFDEE3EF), RoundedCornerShape(50))
+                        .border(1.dp, if (isScanning || accent == AppAccent.CONCEPT_ASH_GREEN) runningBadgeBg else Color(0xFFDEE3EF), RoundedCornerShape(50))
                         .padding(horizontal = 9.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1885,7 +1893,7 @@ fun LiveLogCard(
                                 .size(6.dp)
                                 .clip(androidx.compose.foundation.shape.CircleShape)
                                 .background(
-                                    if (isScanning) runningBadgeTint.copy(alpha = pulseAlpha) else Color(0xFF9CA3B8)
+                                    if (isScanning) runningBadgeTint.copy(alpha = pulseAlpha) else runningBadgeTint
                                 )
                         )
                         Spacer(modifier = Modifier.width(5.dp))
@@ -1966,19 +1974,19 @@ fun LogTimelineEntry(
     val tagBg = when (log) {
         is LogEntry.Success -> if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFFE1F8EF) else accent.container
         is LogEntry.Error -> Color(0xFFFEF2F2)
-        else -> accent.container
+        else -> if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFFE1F8EF) else accent.container
     }
 
     val tagTextColor = when (log) {
         is LogEntry.Success -> if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
         is LogEntry.Error -> Color(0xFFDC2626)
-        else -> accent.primary
+        else -> if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
     }
 
     val nodeBorderColor = when (log) {
         is LogEntry.Success -> if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
         is LogEntry.Error -> Color(0xFFDC2626)
-        else -> accent.primary
+        else -> if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
     }
 
     Row(

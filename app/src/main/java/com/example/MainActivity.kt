@@ -1118,7 +1118,7 @@ fun FolderDeleterDashboard(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         // Header
@@ -1855,7 +1855,7 @@ fun LogTimelineEntry(
             .drawBehind {
                 if (!isLastItem) {
                     val x = 11.dp.toPx() / 2f
-                    val startY = 12.dp.toPx()
+                    val startY = 11.dp.toPx()
                     val endY = size.height
                     drawLine(
                         color = Color(0xFFDEE3EF),
@@ -1868,33 +1868,36 @@ fun LogTimelineEntry(
             .padding(bottom = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // Circle Node Dot
-        Box(
-            modifier = Modifier
-                .padding(top = 4.dp)
-                .size(11.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFE1F8EF))
-                .border(2.dp, nodeBorderColor, CircleShape)
-        )
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        // Content Column
         Column(modifier = Modifier.weight(1f)) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(tagBg)
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = tagText,
-                    fontSize = 10.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = tagTextColor,
-                    letterSpacing = 0.3.sp
+                // Circle Node Dot
+                Box(
+                    modifier = Modifier
+                        .size(11.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFE1F8EF))
+                        .border(2.dp, nodeBorderColor, CircleShape)
                 )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(tagBg)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = tagText,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = tagTextColor,
+                        letterSpacing = 0.3.sp
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -1904,7 +1907,8 @@ fun LogTimelineEntry(
                 fontFamily = FontFamily.Monospace,
                 fontSize = 11.5.sp,
                 color = Color(0xFF636C82),
-                lineHeight = 16.sp
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(start = 21.dp)
             )
         }
     }
@@ -1932,7 +1936,7 @@ fun FolderSettingsScreen(
             .background(Color(0xFFEEF2F9))
             .padding(paddingValues)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Settings Header
@@ -2090,6 +2094,21 @@ fun FolderSettingsScreen(
                 if (checked) onAttemptRoot() else onDisableRoot()
             }
         )
+
+        // Rule 4.5: Direct /data/media/ Scan (shows when Root Access is active)
+        if (rootAccessGranted) {
+            RuleRow(
+                title = "Direct /data/media/ Scan",
+                subtitle = "Target direct /data/media/0 path with superuser permissions",
+                icon = Icons.Default.Storage,
+                checked = settings.scanDirectDataMedia,
+                accent = accent,
+                testTag = "scan_direct_data_media_switch",
+                onCheckedChange = { checked ->
+                    onUpdateSettings { it.copy(scanDirectDataMedia = checked) }
+                }
+            )
+        }
 
         // Rule 5: External Storage Location
         RuleRow(

@@ -2267,18 +2267,20 @@ fun FolderSettingsScreen(
             }
         )
 
-        // Rule 4.5: Direct /data/media/ Scan
-        RuleRow(
-            title = "Direct /data/media/ Scan",
-            subtitle = "Target direct /data/media/0 path with superuser permissions",
-            icon = Icons.Default.Storage,
-            checked = settings.scanDirectDataMedia,
-            accent = accent,
-            testTag = "scan_direct_data_media_switch",
-            onCheckedChange = { checked ->
-                onUpdateSettings { it.copy(scanDirectDataMedia = checked) }
-            }
-        )
+        // Rule 4.5: Direct /data/media/ Scan (only shown when root access is granted)
+        if (rootAccessGranted) {
+            RuleRow(
+                title = "Direct /data/media/ Scan",
+                subtitle = "Target direct /data/media/0 path with superuser permissions",
+                icon = Icons.Default.Storage,
+                checked = settings.scanDirectDataMedia,
+                accent = accent,
+                testTag = "scan_direct_data_media_switch",
+                onCheckedChange = { checked ->
+                    onUpdateSettings { it.copy(scanDirectDataMedia = checked) }
+                }
+            )
+        }
 
         // Rule 5: External Storage Location
         RuleRow(

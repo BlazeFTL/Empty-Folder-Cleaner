@@ -110,6 +110,42 @@ enum class AppAccent(
     CYBER_CITRUS("Cyber Citrus", Color(0xFFFF7A45), Color(0xFFFFF7ED), Color(0xFFC2410C), Color(0xFFFFEDD5), secondaryColor = Color(0xFFFF5C8A), isMixed = true),
     COSMIC_LAVENDER("Cosmic Lavender", Color(0xFF9C8CF5), Color(0xFFF5F3FF), Color(0xFF6D28D9), Color(0xFFDDD6FE));
 
+    val bgBaseColor: Color
+        get() = when (this) {
+            CONCEPT_ASH_GREEN -> Color(0xFFEEF2F8)
+            BREEZE_BLUE -> Color(0xFFEFF4FE)
+            EMERALD_FOREST -> Color(0xFFEFF9F5)
+            WARM_AMBER -> Color(0xFFFCF8EE)
+            ROYAL_PURPLE -> Color(0xFFF6F4FD)
+            BLAZE_CRIMSON -> Color(0xFFFCF1F3)
+            OCEAN_TEAL -> Color(0xFFEFF9F8)
+            SUNSET_ORANGE -> Color(0xFFFCF5EF)
+            DEEP_INDIGO -> Color(0xFFEFF1FD)
+            ROSE_PINK -> Color(0xFFFCF2F6)
+            MIDNIGHT_MINT -> Color(0xFFEFF8F7)
+            NEON_SYNTH -> Color(0xFFF4F3FD)
+            CYBER_CITRUS -> Color(0xFFFCF3EF)
+            COSMIC_LAVENDER -> Color(0xFFF7F5FD)
+        }
+
+    val bgGlow1: Color
+        get() = when (this) {
+            CONCEPT_ASH_GREEN -> Color(0xFFD6E4FB)
+            MIDNIGHT_MINT -> Color(0xFFC5E8F3)
+            NEON_SYNTH -> Color(0xFFDDD9FA)
+            CYBER_CITRUS -> Color(0xFFFDD9CC)
+            else -> primary.copy(alpha = 0.22f)
+        }
+
+    val bgGlow2: Color
+        get() = when (this) {
+            CONCEPT_ASH_GREEN -> Color(0xFFC7F2E2)
+            MIDNIGHT_MINT -> Color(0xFFC2F2E2)
+            NEON_SYNTH -> Color(0xFFCFE1FD)
+            CYBER_CITRUS -> Color(0xFFFDCFDC)
+            else -> if (isMixed) secondaryColor.copy(alpha = 0.20f) else primary.copy(alpha = 0.14f)
+        }
+
     companion object {
         fun fromName(name: String): AppAccent {
             return values().firstOrNull { it.displayName.equals(name, ignoreCase = true) }
@@ -1083,25 +1119,28 @@ fun FolderDeleterDashboard(
         }
     }
 
+    val animatedBgBase by animateColorAsState(targetValue = accent.bgBaseColor, animationSpec = tween(350), label = "bgBase")
+    val animatedBgGlow1 by animateColorAsState(targetValue = accent.bgGlow1, animationSpec = tween(350), label = "bgGlow1")
+    val animatedBgGlow2 by animateColorAsState(targetValue = accent.bgGlow2, animationSpec = tween(350), label = "bgGlow2")
+
     MyApplicationTheme(accent = accent) {
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color(0xFFEEF2F9))
                 .drawBehind {
-                    // Ambient radial gradient glows matching concept CSS
+                    drawRect(animatedBgBase)
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(Color(0xFFE4EBF9), Color.Transparent),
+                            colors = listOf(animatedBgGlow1, Color.Transparent),
                             center = androidx.compose.ui.geometry.Offset(size.width * 0.15f, 0f),
-                            radius = size.width * 0.7f
+                            radius = size.width * 0.85f
                         )
                     )
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(Color(0xFFE8F7F0), Color.Transparent),
+                            colors = listOf(animatedBgGlow2, Color.Transparent),
                             center = androidx.compose.ui.geometry.Offset(size.width, size.height * 0.2f),
-                            radius = size.width * 0.6f
+                            radius = size.width * 0.75f
                         )
                     )
                 }
@@ -1126,17 +1165,17 @@ fun FolderDeleterDashboard(
                         modifier = Modifier
                             .fillMaxSize()
                             .drawBehind {
-                                drawRect(Color(0xFFEEF2F8))
+                                drawRect(animatedBgBase)
                                 drawCircle(
                                     brush = Brush.radialGradient(
-                                        colors = listOf(Color(0xFFD6E4FB), Color(0x00D6E4FB)),
+                                        colors = listOf(animatedBgGlow1, animatedBgGlow1.copy(alpha = 0f)),
                                         center = androidx.compose.ui.geometry.Offset(size.width * 0.05f, 0f),
                                         radius = size.width * 0.95f
                                     )
                                 )
                                 drawCircle(
                                     brush = Brush.radialGradient(
-                                        colors = listOf(Color(0xFFC7F2E2), Color(0x00C7F2E2)),
+                                        colors = listOf(animatedBgGlow2, animatedBgGlow2.copy(alpha = 0f)),
                                         center = androidx.compose.ui.geometry.Offset(size.width * 0.95f, size.height * 0.12f),
                                         radius = size.width * 0.90f
                                     )
@@ -1936,19 +1975,34 @@ fun LiveLogCard(
                     )
                 }
             } else {
-                Column(
+                val listState = rememberLazyListState()
+
+                LaunchedEffect(logs.size) {
+                    if (logs.isNotEmpty()) {
+                        listState.animateScrollToItem(logs.size - 1)
+                    }
+                }
+
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .animateContentSize()
+                        .heightIn(min = 140.dp, max = 300.dp)
                 ) {
-                    val displayLogs = if (logs.size > 200) logs.takeLast(200) else logs
-                    displayLogs.forEachIndexed { index, log ->
-                        LogTimelineEntry(
-                            log = log,
-                            accent = accent,
-                            isFirstItem = index == 0,
-                            isLastItem = index == displayLogs.size - 1
-                        )
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(
+                            count = logs.size,
+                            key = { index -> index }
+                        ) { index ->
+                            LogTimelineEntry(
+                                log = logs[index],
+                                accent = accent,
+                                isFirstItem = index == 0,
+                                isLastItem = index == logs.size - 1
+                            )
+                        }
                     }
                 }
             }

@@ -53,6 +53,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
@@ -1016,7 +1018,7 @@ fun FolderDeleterDashboard(
     var isPermissionGranted by remember { mutableStateOf(checkHasTotalAccess()) }
     var showPermissionExplanatoryDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
-    var activeTarget by remember { mutableStateOf<String?>("INTERNAL") } // "INTERNAL", "SD_CARD", "CUSTOM"
+    var activeTarget by remember { mutableStateOf<String?>(null) } // "INTERNAL", "SD_CARD", "CUSTOM"
 
     BackHandler(enabled = showSettingsDialog) {
         showSettingsDialog = false
@@ -1117,8 +1119,8 @@ fun FolderDeleterDashboard(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .widthIn(max = 440.dp)
-                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                                .widthIn(max = 380.dp)
+                                .padding(horizontal = 24.dp, vertical = 14.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                         // Header
@@ -1149,7 +1151,7 @@ fun FolderDeleterDashboard(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
                                     .background(
-                                        if (isPermissionGranted) Color(0xFFE1F8EF) else Color(0xFFFEF2F2)
+                                        if (isPermissionGranted) accent.container else Color(0xFFFEF2F2)
                                     )
                                     .clickable {
                                         if (!isPermissionGranted) {
@@ -1163,7 +1165,7 @@ fun FolderDeleterDashboard(
                                     Icon(
                                         imageVector = if (isPermissionGranted) Icons.Default.Check else Icons.Default.Warning,
                                         contentDescription = null,
-                                        tint = if (isPermissionGranted) Color(0xFF00B37E) else Color(0xFFDC2626),
+                                        tint = if (isPermissionGranted) accent.primary else Color(0xFFDC2626),
                                         modifier = Modifier.size(13.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -1171,7 +1173,7 @@ fun FolderDeleterDashboard(
                                         text = if (isPermissionGranted) "Access Granted" else "Access Pending",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isPermissionGranted) Color(0xFF00B37E) else Color(0xFFDC2626)
+                                        color = if (isPermissionGranted) accent.primary else Color(0xFFDC2626)
                                     )
                                 }
                             }
@@ -1349,56 +1351,121 @@ fun FolderDeleterDashboard(
 
     // Storage Access Permission Dialog
     if (showPermissionExplanatoryDialog) {
-        AlertDialog(
+        Dialog(
             onDismissRequest = { showPermissionExplanatoryDialog = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Security,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(24.dp)
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .widthIn(max = 380.dp)
+                    .fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(22.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Header Icon Container
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(accent.container),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FolderSpecial,
+                            contentDescription = null,
+                            tint = accent.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Storage Access Required",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color(0xFF12172B),
+                        textAlign = TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Storage Access Request", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                }
-            },
-            text = {
-                Text(
-                    text = "Android limits access to storage directories. To scan and remove empty folders across your internal and SD storage, please grant Storage Access in system settings.",
-                    fontSize = 13.5.sp,
-                    color = Color(0xFF636C82)
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showPermissionExplanatoryDialog = false
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            try {
-                                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                                    data = Uri.parse("package:${context.packageName}")
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "To scan and clean empty folders across your internal and external storage, Empty Folder Cleaner requires All Files Access permission.",
+                        fontSize = 13.sp,
+                        color = Color(0xFF636C82),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Grant Access Primary Action Button
+                    Button(
+                        onClick = {
+                            showPermissionExplanatoryDialog = false
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                try {
+                                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                    }
+                                    allFilesSettingsLauncher.launch(intent)
+                                } catch (e: Exception) {
+                                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                    allFilesSettingsLauncher.launch(intent)
                                 }
-                                allFilesSettingsLauncher.launch(intent)
-                            } catch (e: Exception) {
-                                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                                allFilesSettingsLauncher.launch(intent)
                             }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = accent.primary),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shield,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Grant Storage Access",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.5.sp,
+                                color = Color.White
+                            )
                         }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = accent.primary)
-                ) {
-                    Text("Grant Access", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showPermissionExplanatoryDialog = false }
-                ) {
-                    Text("Cancel", color = Color(0xFF636C82))
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Maybe Later Secondary Dismiss Button
+                    TextButton(
+                        onClick = { showPermissionExplanatoryDialog = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Maybe Later",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF9CA3B8)
+                        )
+                    }
                 }
             }
-        )
+        }
     }
 }
 
@@ -1536,7 +1603,7 @@ fun ProgressCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(Color(0xFFE1F8EF))
+                            .background(accent.container)
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1545,14 +1612,14 @@ fun ProgressCard(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(Color(0xFF00B37E).copy(alpha = pulseAlpha))
+                                    .background(accent.primary.copy(alpha = pulseAlpha))
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Running",
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF00B37E)
+                                color = accent.primary
                             )
                         }
                     }
@@ -1586,7 +1653,7 @@ fun ProgressCard(
                             .clip(RoundedCornerShape(50))
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(accent.primary, Color(0xFF00B37E))
+                                    colors = if (accent.isMixed) listOf(accent.primary, accent.secondaryColor) else listOf(accent.primary, accent.primary.copy(alpha = 0.75f))
                                 )
                             )
                     )
@@ -1644,7 +1711,7 @@ fun ProgressCard(
                         modifier = Modifier
                             .size(26.dp)
                             .clip(androidx.compose.foundation.shape.CircleShape)
-                            .background(Color(0xFF00B37E)),
+                            .background(accent.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -1769,8 +1836,8 @@ fun LiveLogCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(if (isScanning) Color(0xFFE1F8EF) else Color.White)
-                        .border(1.dp, if (isScanning) Color(0xFFE1F8EF) else Color(0xFFDEE3EF), RoundedCornerShape(50))
+                        .background(if (isScanning) accent.container else Color.White)
+                        .border(1.dp, if (isScanning) accent.container else Color(0xFFDEE3EF), RoundedCornerShape(50))
                         .padding(horizontal = 9.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1780,7 +1847,7 @@ fun LiveLogCard(
                                 .size(6.dp)
                                 .clip(androidx.compose.foundation.shape.CircleShape)
                                 .background(
-                                    if (isScanning) Color(0xFF00B37E).copy(alpha = pulseAlpha) else Color(0xFF9CA3B8)
+                                    if (isScanning) accent.primary.copy(alpha = pulseAlpha) else Color(0xFF9CA3B8)
                                 )
                         )
                         Spacer(modifier = Modifier.width(5.dp))
@@ -1788,7 +1855,7 @@ fun LiveLogCard(
                             text = if (isScanning) "Running" else "Idle",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isScanning) Color(0xFF00B37E) else Color(0xFF9CA3B8)
+                            color = if (isScanning) accent.primary else Color(0xFF9CA3B8)
                         )
                     }
                 }
@@ -1855,19 +1922,19 @@ fun LogTimelineEntry(
     }
 
     val tagBg = when (log) {
-        is LogEntry.Success -> Color(0xFFE1F8EF)
+        is LogEntry.Success -> accent.container
         is LogEntry.Error -> Color(0xFFFEF2F2)
-        else -> accent.primary.copy(alpha = 0.12f)
+        else -> accent.container
     }
 
     val tagTextColor = when (log) {
-        is LogEntry.Success -> Color(0xFF00B37E)
+        is LogEntry.Success -> accent.primary
         is LogEntry.Error -> Color(0xFFDC2626)
         else -> accent.primary
     }
 
     val nodeBorderColor = when (log) {
-        is LogEntry.Success -> Color(0xFF00B37E)
+        is LogEntry.Success -> accent.primary
         is LogEntry.Error -> Color(0xFFDC2626)
         else -> accent.primary
     }
@@ -1971,9 +2038,9 @@ fun FolderSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 440.dp)
+                .widthIn(max = 380.dp)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 24.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         // Settings Header

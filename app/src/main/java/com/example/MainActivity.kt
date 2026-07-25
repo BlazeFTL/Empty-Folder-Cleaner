@@ -18,6 +18,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,12 +37,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -1010,9 +1013,16 @@ fun FolderDeleterDashboard(
     var isPermissionGranted by remember { mutableStateOf(checkHasTotalAccess()) }
     var showPermissionExplanatoryDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var activeTarget by remember { mutableStateOf<String?>(null) } // "INTERNAL", "SD_CARD", "CUSTOM"
 
     BackHandler(enabled = showSettingsDialog) {
         showSettingsDialog = false
+    }
+
+    LaunchedEffect(screenState) {
+        if (screenState !is ScreenState.ScanInProgress) {
+            activeTarget = null
+        }
     }
 
     // Onboarding info display and first-launch permission request
@@ -1029,10 +1039,11 @@ fun FolderDeleterDashboard(
     ) { uri: Uri? ->
         if (uri != null) {
             viewModel.addInfoLog("Folder access acquired via system dialog.")
-            viewModel.addInfoLog("Tip: If 'Use this folder' is disabled at storage root, you can select any directory, or use the DELETE - Internal option.")
+            viewModel.addInfoLog("Tip: Select directory or use direct internal option.")
             viewModel.startDocumentTreeScan(context, uri)
         } else {
             viewModel.addInfoLog("Folder picker selection cancelled.")
+            activeTarget = null
         }
     }
 
@@ -1041,9 +1052,7 @@ fun FolderDeleterDashboard(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
         if (uri != null) {
-            viewModel.addInfoLog("Custom external storage path selected.")
-            viewModel.addInfoLog("Path Segment: ${uri.lastPathSegment}")
-            viewModel.addInfoLog("Tip: System blocks picking direct storage roots, so selecting a sub-directory is recommended.")
+            viewModel.addInfoLog("Custom external storage path selected: ${uri.lastPathSegment}")
             viewModel.updateSettings { it.copy(externalStorageUri = uri.toString()) }
         } else {
             viewModel.addInfoLog("External storage selection cancelled.")
@@ -1058,1316 +1067,288 @@ fun FolderDeleterDashboard(
         isPermissionGranted = hasPermissionNow
         if (hasPermissionNow) {
             viewModel.addInfoLog("System All Files Access successfully granted!")
-            viewModel.addInfoLog("Please tap the scan button of your choice to begin!")
         } else {
-            viewModel.addInfoLog("Permission was not granted. Direct full scan bypassed.")
+            viewModel.addInfoLog("Permission was not granted.")
         }
     }
 
     MyApplicationTheme(accent = accent) {
-        androidx.compose.material3.Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color(0xFFEEF2F9))
+                .drawBehind {
+                    // Ambient radial gradient glows matching concept CSS
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFFE4EBF9), Color.Transparent),
+                            center = androidx.compose.ui.geometry.Offset(size.width * 0.15f, 0f),
+                            radius = size.width * 0.7f
+                        )
+                    )
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFFE8F7F0), Color.Transparent),
+                            center = androidx.compose.ui.geometry.Offset(size.width, size.height * 0.2f),
+                            radius = size.width * 0.6f
+                        )
+                    )
+                }
         ) {
             Scaffold(
-                modifier = modifier,
                 containerColor = Color.Transparent
             ) { paddingValues ->
-            if (showSettingsDialog) {
-                val accent = AppAccent.fromName(settings.accentName)
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(paddingValues)
-                        .verticalScroll(rememberScrollState())
-                    .padding(vertical = 20.dp)
-            ) {
-                // Settings Header Panel with Back Arrow Button
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 4.dp, end = 20.dp, bottom = 24.dp)
-                ) {
-                    IconButton(
-                        onClick = { showSettingsDialog = false },
-                        modifier = Modifier.testTag("settings_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color(0xFF0F172A),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Folder Settings",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        color = Color(0xFF0F172A)
+                if (showSettingsDialog) {
+                    FolderSettingsScreen(
+                        settings = settings,
+                        rootAccessGranted = rootAccessGranted,
+                        accent = accent,
+                        onBack = { showSettingsDialog = false },
+                        onUpdateSettings = { updater -> viewModel.updateSettings(updater) },
+                        onAttemptRoot = { viewModel.attemptRootRequest() },
+                        onDisableRoot = { viewModel.disableRootAccess() },
+                        onPickExternalUri = { externalStoragePickerLauncher.launch(null) },
+                        paddingValues = paddingValues
                     )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier
-                            .background(accent.primary, shape = androidx.compose.foundation.shape.CircleShape)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "By BlazeFTL",
-                            fontSize = 11.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                ) {
-                    // Beautiful system description card adapting to chosen accent
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = accent.container),
-                    border = BorderStroke(1.dp, accent.border),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 20.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = accent.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "System Engine Rules",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = accent.text
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Configure parameters for search algorithms. Enabling deep system paths can slow down execution but exposes isolated junk caches.",
-                            fontSize = 11.sp,
-                            color = accent.text.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-
-                Text(
-                    text = "ENGINE CONFIGURATION",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF64748B),
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
-                )
-
-                // 1. Clean Android Folders Card
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(accent.container, shape = RoundedCornerShape(12.dp))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FolderSpecial,
-                                    contentDescription = null,
-                                    tint = accent.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column {
-                                Text(
-                                    text = "Clean Android Folders",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF0F172A)
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Scan/clean folders inside Android system folder",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF64748B)
-                                )
-                            }
-                        }
-                        Switch(
-                            checked = settings.cleanAndroidFolder,
-                            onCheckedChange = { value ->
-                                viewModel.updateSettings { it.copy(cleanAndroidFolder = value) }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = accent.primary,
-                                uncheckedThumbColor = Color(0xFF94A3B8),
-                                uncheckedTrackColor = Color(0xFFE2E8F0)
-                            ),
-                            modifier = Modifier.testTag("clean_android_folder_switch")
-                        )
-                    }
-                }
-
-                // Delete Folders Containing Only .nomedia
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(accent.container, shape = RoundedCornerShape(12.dp))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FolderOff,
-                                    contentDescription = null,
-                                    tint = accent.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column {
-                                Text(
-                                    text = "Delete .nomedia Folders",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF0F172A)
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Delete folders containing only .nomedia files",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF64748B)
-                                )
-                            }
-                        }
-                        Switch(
-                            checked = settings.treatNoMediaAsEmpty,
-                            onCheckedChange = { value ->
-                                viewModel.updateSettings { it.copy(treatNoMediaAsEmpty = value) }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = accent.primary,
-                                uncheckedThumbColor = Color(0xFF94A3B8),
-                                uncheckedTrackColor = Color(0xFFE2E8F0)
-                            ),
-                            modifier = Modifier.testTag("treat_nomedia_as_empty_switch")
-                        )
-                    }
-                }
-
-                // Hide Preview Mode Card
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(accent.container, shape = RoundedCornerShape(12.dp))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.VisibilityOff,
-                                    contentDescription = null,
-                                    tint = accent.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column {
-                                Text(
-                                    text = "Hide Preview Mode",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF0F172A)
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Hide the Preview Mode card from the main screen",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF64748B)
-                                )
-                            }
-                        }
-                        Switch(
-                            checked = settings.hideDryRun,
-                            onCheckedChange = { value ->
-                                viewModel.updateSettings { it.copy(hideDryRun = value) }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = accent.primary,
-                                uncheckedThumbColor = Color(0xFF94A3B8),
-                                uncheckedTrackColor = Color(0xFFE2E8F0)
-                            ),
-                            modifier = Modifier.testTag("hide_preview_mode_switch")
-                        )
-                    }
-                }
-
-                // 2. Root Access Card
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(accent.container, shape = RoundedCornerShape(12.dp))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Shield,
-                                    contentDescription = null,
-                                    tint = accent.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column {
-                                Text(
-                                    text = "Root Access",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF0F172A)
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = if (rootAccessGranted) "Superuser privileges active" else "Grant SU root access for ultra-fast scanning and deletion",
-                                    fontSize = 11.sp,
-                                    color = if (rootAccessGranted) Color(0xFF10B981) else Color(0xFF64748B)
-                                )
-                            }
-                        }
-                        Switch(
-                            checked = rootAccessGranted,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    viewModel.attemptRootRequest()
-                                } else {
-                                    viewModel.disableRootAccess()
-                                }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = accent.primary,
-                                uncheckedThumbColor = Color(0xFF94A3B8),
-                                uncheckedTrackColor = Color(0xFFE2E8F0)
-                            ),
-                            modifier = Modifier.testTag("root_access_switch")
-                        )
-                    }
-                }
-
-                // Direct /data/media/ Scan Card (Visible with smooth transition when Root Access is active)
-                AnimatedVisibility(
-                    visible = rootAccessGranted,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(accent.container, shape = RoundedCornerShape(12.dp))
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Bolt,
-                                        contentDescription = null,
-                                        tint = accent.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Column {
-                                    Text(
-                                        text = "Direct /data/media/ Scan",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                        color = Color(0xFF0F172A)
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "Scan physical ext4/f2fs storage directly to bypass FUSE filesystem lag",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF64748B)
-                                    )
-                                }
-                            }
-                            Switch(
-                                checked = settings.scanDirectDataMedia,
-                                onCheckedChange = { value ->
-                                    viewModel.updateSettings { it.copy(scanDirectDataMedia = value) }
-                                },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = accent.primary,
-                                    uncheckedThumbColor = Color(0xFF94A3B8),
-                                    uncheckedTrackColor = Color(0xFFE2E8F0)
-                                ),
-                                modifier = Modifier.testTag("direct_data_media_switch")
-                            )
-                        }
-                    }
-                }
-
-                // 3. Custom External Storage Location Card
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                ) {
+                } else {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
+                        // Header
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(accent.container, shape = RoundedCornerShape(12.dp))
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Storage,
-                                        contentDescription = null,
-                                        tint = accent.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Column {
-                                    Text(
-                                        text = "External Storage Location",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                        color = Color(0xFF0F172A)
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "Scan custom external storage location",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF64748B)
-                                    )
-                                }
+                            Column {
+                                Text(
+                                    text = "Empty Folder Cleaner",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp,
+                                    color = Color(0xFF12172B)
+                                )
+                                Text(
+                                    text = "STORAGE · RECLAIM",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF9CA3B8),
+                                    letterSpacing = 0.6.sp
+                                )
                             }
-                            Switch(
-                                checked = settings.enableExternalStorage,
-                                onCheckedChange = { value ->
-                                    viewModel.updateSettings { it.copy(enableExternalStorage = value) }
-                                },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = accent.primary,
-                                    uncheckedThumbColor = Color(0xFF94A3B8),
-                                    uncheckedTrackColor = Color(0xFFE2E8F0)
-                                ),
-                                modifier = Modifier.testTag("enable_external_storage_switch")
-                            )
-                        }
 
-                        if (settings.enableExternalStorage) {
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            // Access Pill Badge
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(1.dp)
-                                    .background(Color(0xFFF1F5F9))
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Storage Folder Path",
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF0F172A)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(
+                                        if (isPermissionGranted) Color(0xFFE1F8EF) else Color(0xFFFEF2F2)
                                     )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = if (settings.externalStorageUri.isNotEmpty()) {
-                                            try {
-                                                Uri.parse(settings.externalStorageUri).lastPathSegment ?: "Custom folder selected"
-                                            } catch (e: Exception) {
-                                                "Custom folder selected"
-                                            }
-                                        } else {
-                                            "No location chosen yet"
-                                        },
-                                        fontSize = 11.sp,
-                                        color = if (settings.externalStorageUri.isNotEmpty()) accent.primary else Color(0xFFEF4444)
-                                    )
-                                }
-
-                                Button(
-                                    onClick = {
-                                        externalStoragePickerLauncher.launch(null)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = accent.container),
-                                    shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = if (settings.externalStorageUri.isNotEmpty()) "Change" else "Choose",
-                                        color = accent.primary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Section 1: Solid MD3 Accents
-                Text(
-                    text = "SOLID FIXED COLORS",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF64748B),
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-                )
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 20.dp)
-                ) {
-                    val solidPresets = AppAccent.values().filter { !it.isMixed }
-                    solidPresets.chunked(3).forEach { rowPresets ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            rowPresets.forEach { p ->
-                                AccentOptionCard(
-                                    accent = p,
-                                    isSelected = AppAccent.fromName(settings.accentName) == p,
-                                    onClick = {
-                                        viewModel.updateSettings { it.copy(accentName = p.displayName) }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            if (rowPresets.size < 3) {
-                                repeat(3 - rowPresets.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Section 2: Dual-Accent Mixes
-                Text(
-                    text = "DUAL-ACCENT MIXES (GRADIENTS)",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF64748B),
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-                )
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 24.dp)
-                ) {
-                    val mixedPresets = AppAccent.values().filter { it.isMixed }
-                    mixedPresets.chunked(3).forEach { rowPresets ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            rowPresets.forEach { p ->
-                                AccentOptionCard(
-                                    accent = p,
-                                    isSelected = AppAccent.fromName(settings.accentName) == p,
-                                    onClick = {
-                                        viewModel.updateSettings { it.copy(accentName = p.displayName) }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            if (rowPresets.size < 3) {
-                                repeat(3 - rowPresets.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Button(
-                    onClick = { showSettingsDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = accent.primary),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Done,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Close", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                }
-                }
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(paddingValues)
-                    .padding(horizontal = 16.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-
-                // ==========================================
-                // Brand & Header Panel matching concept screenshot
-                // ==========================================
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, bottom = 16.dp)
-                ) {
-                    Column {
-                        Text(
-                            text = "Empty Folder Cleaner",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = Color(0xFF12172B),
-                            letterSpacing = (-0.5).sp,
-                        )
-                        Text(
-                            text = "STORAGE · RECLAIM",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF94A3B8),
-                            letterSpacing = 0.8.sp
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    // Access Granted green pill badge
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = if (isPermissionGranted) Color(0xFFE1F8EF) else Color(0xFFFEE2E2),
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                            .then(
-                                if (!isPermissionGranted) {
-                                    Modifier.clickable { showPermissionExplanatoryDialog = true }
-                                } else Modifier
-                            )
-                            .padding(horizontal = 12.dp, vertical = 7.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = if (isPermissionGranted) Icons.Default.Check else Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = if (isPermissionGranted) Color(0xFF00B37E) else Color(0xFFEF4444),
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isPermissionGranted) "Access Granted" else "Access Denied",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isPermissionGranted) Color(0xFF00B37E) else Color(0xFFEF4444)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Surface(
-                        onClick = { showSettingsDialog = true },
-                        shape = RoundedCornerShape(11.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
-                        modifier = Modifier
-                            .size(38.dp)
-                            .testTag("settings_button")
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                tint = Color(0xFF636C82),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-
-                // ==========================================
-                // Target Action Buttons (Side-by-Side Pill Row)
-                // ==========================================
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val isScanningInternal = screenState is ScreenState.ScanInProgress
-                    // Internal Storage Pill Card
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = accent.primary
-                        ),
-                        shape = RoundedCornerShape(18.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(58.dp)
-                            .clickable(enabled = screenState !is ScreenState.ScanInProgress) {
-                                if (checkHasTotalAccess()) {
-                                    val extPath = java.io.File(Environment.getExternalStorageDirectory().absolutePath)
-                                    viewModel.startDirectFileScan(extPath)
-                                } else {
-                                    showPermissionExplanatoryDialog = true
-                                }
-                            }
-                            .testTag("clean_phone_memory_button")
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .background(Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(10.dp))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Smartphone,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Internal Storage",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = Color.White
-                            )
-                        }
-                    }
-
-                    // SD Card Pill Card
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.White
-                        ),
-                        border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
-                        shape = RoundedCornerShape(18.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(58.dp)
-                            .clickable(enabled = screenState !is ScreenState.ScanInProgress) {
-                                if (checkHasTotalAccess()) {
-                                    val sdRoot = viewModel.findSdCardRoot(context)
-                                    if (sdRoot != null) {
-                                        viewModel.addInfoLog("Physical external SD Card detected at: ${sdRoot.absolutePath}")
-                                        viewModel.startDirectFileScan(sdRoot)
-                                    } else {
-                                        viewModel.addInfoLog("No mounted external SD Card detected under standard directories. Opening backup storage folder selector...")
-                                        safLauncher.launch(null)
+                                    .clickable {
+                                        if (!isPermissionGranted) {
+                                            showPermissionExplanatoryDialog = true
+                                        }
                                     }
-                                } else {
-                                    showPermissionExplanatoryDialog = true
+                                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = if (isPermissionGranted) Icons.Default.Check else Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = if (isPermissionGranted) Color(0xFF00B37E) else Color(0xFFDC2626),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isPermissionGranted) "Access Granted" else "Access Pending",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isPermissionGranted) Color(0xFF00B37E) else Color(0xFFDC2626)
+                                    )
                                 }
                             }
-                            .testTag("clean_sd_card_button")
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            // Settings Button
                             Box(
-                                contentAlignment = Alignment.Center,
                                 modifier = Modifier
-                                    .size(32.dp)
-                                    .background(Color(0xFFF1F5F9), shape = RoundedCornerShape(10.dp))
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(11.dp))
+                                    .background(Color.White)
+                                    .border(1.dp, Color(0xFFDEE3EF), RoundedCornerShape(11.dp))
+                                    .clickable { showSettingsDialog = true }
+                                    .testTag("settings_button"),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.SdCard,
-                                    contentDescription = null,
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings",
                                     tint = Color(0xFF636C82),
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "SD Card",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = Color(0xFF334155)
+                        }
+
+                        // Target Switcher Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            val isScanning = screenState is ScreenState.ScanInProgress
+
+                            // Target 1: Internal Storage
+                            TargetButton(
+                                title = "Internal Storage",
+                                icon = Icons.Default.PhoneAndroid,
+                                isActive = activeTarget == "INTERNAL",
+                                isDisabled = isScanning && activeTarget != "INTERNAL",
+                                accent = accent,
+                                testTag = "clean_phone_memory_button",
+                                onClick = {
+                                    if (checkHasTotalAccess()) {
+                                        activeTarget = "INTERNAL"
+                                        val extPath = File(Environment.getExternalStorageDirectory().absolutePath)
+                                        viewModel.startDirectFileScan(extPath)
+                                    } else {
+                                        showPermissionExplanatoryDialog = true
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // Target 2: SD Card
+                            TargetButton(
+                                title = "SD Card",
+                                icon = Icons.Default.SdCard,
+                                isActive = activeTarget == "SD_CARD",
+                                isDisabled = isScanning && activeTarget != "SD_CARD",
+                                accent = accent,
+                                testTag = "clean_sd_card_button",
+                                onClick = {
+                                    if (checkHasTotalAccess()) {
+                                        activeTarget = "SD_CARD"
+                                        val sdRoot = viewModel.findSdCardRoot(context)
+                                        if (sdRoot != null) {
+                                            viewModel.addInfoLog("Physical external SD Card detected at: ${sdRoot.absolutePath}")
+                                            viewModel.startDirectFileScan(sdRoot)
+                                        } else {
+                                            viewModel.addInfoLog("No mounted SD card found. Opening folder selector...")
+                                            safLauncher.launch(null)
+                                        }
+                                    } else {
+                                        showPermissionExplanatoryDialog = true
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // Target 3: Custom External Storage (If enabled)
+                            if (settings.enableExternalStorage) {
+                                TargetButton(
+                                    title = "Custom Storage",
+                                    icon = Icons.Default.Folder,
+                                    isActive = activeTarget == "CUSTOM",
+                                    isDisabled = isScanning && activeTarget != "CUSTOM",
+                                    accent = accent,
+                                    testTag = "clean_custom_storage_button",
+                                    onClick = {
+                                        if (settings.externalStorageUri.isNotEmpty()) {
+                                            try {
+                                                activeTarget = "CUSTOM"
+                                                viewModel.startDocumentTreeScan(context, Uri.parse(settings.externalStorageUri))
+                                            } catch (e: Exception) {
+                                                externalStoragePickerLauncher.launch(null)
+                                            }
+                                        } else {
+                                            externalStoragePickerLauncher.launch(null)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        // Deletion Progress Card
+                        if (screenState is ScreenState.ScanInProgress || screenState is ScreenState.Finished) {
+                            ProgressCard(
+                                screenState = screenState,
+                                settings = settings,
+                                accent = accent,
+                                onCancel = {
+                                    viewModel.cancelScan()
+                                    activeTarget = null
+                                }
                             )
                         }
-                    }
-                }
 
-                if (settings.enableExternalStorage) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = screenState !is ScreenState.ScanInProgress) {
-                                if (settings.externalStorageUri.isNotEmpty()) {
-                                    try {
-                                        viewModel.startDocumentTreeScan(context, Uri.parse(settings.externalStorageUri))
-                                    } catch (e: Exception) {
-                                        viewModel.addInfoLog("Error: Invalid storage path format. Opening folder picker to configure...")
-                                        externalStoragePickerLauncher.launch(null)
+                        // Preview Mode Switch Card
+                        if (!settings.hideDryRun) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
+                                shape = RoundedCornerShape(18.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Preview Mode",
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 13.5.sp,
+                                            color = Color(0xFF12172B)
+                                        )
+                                        Text(
+                                            text = "Find empty folders without deleting them",
+                                            fontSize = 11.5.sp,
+                                            color = Color(0xFF636C82)
+                                        )
                                     }
-                                } else {
-                                    viewModel.addInfoLog("No custom external storage path selected in Settings. Launching chooser...")
-                                    externalStoragePickerLauncher.launch(null)
+                                    Switch(
+                                        checked = settings.dryRun,
+                                        onCheckedChange = { value ->
+                                            viewModel.updateSettings { it.copy(dryRun = value) }
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = Color.White,
+                                            checkedTrackColor = accent.primary,
+                                            uncheckedThumbColor = Color.White,
+                                            uncheckedTrackColor = Color(0xFFDEE3EF)
+                                        ),
+                                        modifier = Modifier.testTag("dry_run_switch")
+                                    )
                                 }
                             }
-                            .testTag("clean_custom_storage_button")
-                    ) {
-                        Box(
+                        }
+
+                        // Live Log Card
+                        LiveLogCard(
+                            logs = logs,
+                            isScanning = screenState is ScreenState.ScanInProgress,
+                            accent = accent,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                modifier = Modifier.width(310.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(accent.container, shape = androidx.compose.foundation.shape.CircleShape)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Storage,
-                                        contentDescription = null,
-                                        tint = accent.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Text(
-                                    text = "Delete Empty Folders - External Storage",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF0F172A)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ==========================================
-            // Preview Mode Directly Displayed
-            // ==========================================
-            if (!settings.hideDryRun) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Preview Mode",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = Color(0xFF0F172A)
-                            )
-                            Text(
-                                text = "Find empty folders without deleting them",
-                                fontSize = 11.sp,
-                                color = Color(0xFF64748B)
-                            )
-                        }
-                        Switch(
-                            checked = settings.dryRun,
-                            onCheckedChange = { value ->
-                                viewModel.updateSettings { it.copy(dryRun = value) }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = accent.primary,
-                                uncheckedThumbColor = Color(0xFF94A3B8),
-                                uncheckedTrackColor = Color(0xFFE2E8F0)
-                            ),
-                            modifier = Modifier.testTag("dry_run_switch")
+                                .weight(1f)
                         )
                     }
                 }
             }
-
-            // ==========================================
-            // Live Scanning Progress Card (Matching Concept Screenshot)
-            // ==========================================
-            AnimatedVisibility(visible = screenState is ScreenState.ScanInProgress) {
-                val progressState = screenState as? ScreenState.ScanInProgress
-                progressState?.let { progress ->
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
-                        shape = RoundedCornerShape(24.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(18.dp)) {
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "DELETION PROGRESS",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF94A3B8),
-                                    letterSpacing = 0.8.sp
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .background(Color(0xFFE1F8EF), shape = androidx.compose.foundation.shape.CircleShape)
-                                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(6.dp)
-                                                .background(Color(0xFF00B37E), shape = androidx.compose.foundation.shape.CircleShape)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "Running",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF00B37E)
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            LinearProgressIndicator(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(8.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
-                                color = Color(0xFF00B37E),
-                                trackColor = Color(0xFFE2E8F0)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "Path: ${progress.currentPath}",
-                                fontSize = 11.5.sp,
-                                fontFamily = FontFamily.Monospace,
-                                color = Color(0xFF64748B),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "Scanned: ${progress.scannedCount}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1E293B)
-                                )
-                                Text(
-                                    text = if (settings.dryRun) "Found: ${progress.deletedCount}" else "Deleted: ${progress.deletedCount}",
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF1E293B),
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(14.dp))
-                            OutlinedButton(
-                                onClick = { viewModel.cancelScan() },
-                                border = BorderStroke(1.5.dp, Color(0xFFFF6B52)),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color(0xFFFF6B52)
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp)
-                            ) {
-                                Text("Cancel Operation", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ==========================================
-            // Metrics Summary on Last Run (Compact Layout)
-            // ==========================================
-            AnimatedVisibility(visible = screenState is ScreenState.Finished) {
-                val finished = screenState as? ScreenState.Finished
-                finished?.let { stats ->
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = accent.container),
-                        border = BorderStroke(1.dp, accent.border),
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .background(accent.primary, shape = androidx.compose.foundation.shape.CircleShape)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = "Done",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (stats.dryRun) "Scan Complete!" else "Deletion Complete!",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = accent.text
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Scanned Folders",
-                                        fontSize = 10.sp,
-                                        color = accent.text.copy(alpha = 0.7f),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "${stats.totalScanned}",
-                                        fontWeight = FontWeight.Black,
-                                        fontSize = 18.sp,
-                                        color = accent.text
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        text = if (stats.dryRun) "Folders Found" else "Folders Deleted",
-                                        fontSize = 10.sp,
-                                        color = accent.text.copy(alpha = 0.7f),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "${stats.totalDeleted}",
-                                        fontWeight = FontWeight.Black,
-                                        fontSize = 18.sp,
-                                        color = accent.text
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        text = "Time",
-                                        fontSize = 10.sp,
-                                        color = accent.text.copy(alpha = 0.7f),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = String.format("%.2fs", stats.durationMs / 1000.0),
-                                        fontWeight = FontWeight.Black,
-                                        fontSize = 18.sp,
-                                        color = accent.text
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ==========================================
-            // Live Log Card (Exact Match to Concept)
-            // ==========================================
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Live Log",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = Color(0xFF12172B)
-                        )
-
-                        val isRunning = screenState is ScreenState.ScanInProgress
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (isRunning) Color(0xFFE1F8EF) else Color(0xFFF1F5F9),
-                                    shape = androidx.compose.foundation.shape.CircleShape
-                                )
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .background(
-                                            if (isRunning) Color(0xFF00B37E) else Color(0xFF94A3B8),
-                                            shape = androidx.compose.foundation.shape.CircleShape
-                                        )
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (isRunning) "Running" else "Idle",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isRunning) Color(0xFF00B37E) else Color(0xFF64748B)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(240.dp)
-                            .background(Color(0xFFFAFAFE), RoundedCornerShape(16.dp))
-                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
-                            .padding(12.dp)
-                    ) {
-                        if (logs.isEmpty()) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .testTag("log_idle_message_box")
-                            ) {
-                                Text(
-                                    text = "Log idle. Start a scan to see results.",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF94A3B8),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        } else {
-                            val noParentScrollConnection = remember {
-                                object : NestedScrollConnection {
-                                    override fun onPostScroll(
-                                        consumed: Offset,
-                                        available: Offset,
-                                        source: NestedScrollSource
-                                    ): Offset {
-                                        return available
-                                    }
-                                }
-                            }
-                            val lazyListState = rememberLazyListState()
-
-                            LaunchedEffect(logs.size) {
-                                if (logs.isNotEmpty()) {
-                                    lazyListState.scrollToItem(logs.size - 1)
-                                }
-                            }
-
-                            LazyColumn(
-                                state = lazyListState,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .nestedScroll(noParentScrollConnection)
-                            ) {
-                                items(logs.size) { index ->
-                                    val log = logs[index]
-                                    ConsoleLogLine(log = log, accent = accent, isLast = index == logs.size - 1)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 
-    // ==========================================
-    // System Storage Permission Dialogue (Material 3 compliant)
-    // ==========================================
+    // Storage Access Permission Dialog
     if (showPermissionExplanatoryDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionExplanatoryDialog = false },
@@ -2377,19 +1358,18 @@ fun FolderDeleterDashboard(
                         imageVector = Icons.Default.Security,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Storage Access Request", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Storage Access Request", fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
             },
             text = {
-                Column {
-                    Text(
-                        text = "Android limits access to storage roots on modern versions. To effectively scan and clean empty folders across your internal and external storage, please allow Storage Access in system settings.",
-                        fontSize = 14.sp
-                    )
-                }
+                Text(
+                    text = "Android limits access to storage directories. To scan and remove empty folders across your internal and SD storage, please grant Storage Access in system settings.",
+                    fontSize = 13.5.sp,
+                    color = Color(0xFF636C82)
+                )
             },
             confirmButton = {
                 Button(
@@ -2406,166 +1386,237 @@ fun FolderDeleterDashboard(
                                 allFilesSettingsLauncher.launch(intent)
                             }
                         }
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = accent.primary)
                 ) {
-                    Text("Allow Storage Access")
+                    Text("Grant Access", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showPermissionExplanatoryDialog = false }
                 ) {
-                    Text("Cancel")
+                    Text("Cancel", color = Color(0xFF636C82))
                 }
             }
         )
     }
 }
-}
-}
 
 // ==========================================
-// Colored Log Line for Console Container
+// Target Switcher Button Composable
 // ==========================================
 
 @Composable
-fun ConsoleLogLine(log: LogEntry, accent: AppAccent, isLast: Boolean = false) {
-    val chipBgColor = when (log) {
-        is LogEntry.Success -> if (log.isDryRun) Color(0xFFF3E8FF) else Color(0xFFE1F8EF)
-        is LogEntry.Error -> Color(0xFFFEE2E2)
-        is LogEntry.ScanProgress -> Color(0xFFF1F5F9)
-        is LogEntry.Info -> Color(0xFFE1F8EF)
-    }
-
-    val chipTextColor = when (log) {
-        is LogEntry.Success -> if (log.isDryRun) Color(0xFF7C3AED) else Color(0xFF00B37E)
-        is LogEntry.Error -> Color(0xFFEF4444)
-        is LogEntry.ScanProgress -> Color(0xFF64748B)
-        is LogEntry.Info -> Color(0xFF00B37E)
-    }
-
-    val label = when (log) {
-        is LogEntry.Success -> if (log.isDryRun) "EMPTY" else "DELETED"
-        is LogEntry.Error -> "FAILED"
-        is LogEntry.ScanProgress -> "SCAN"
-        is LogEntry.Info -> "STATUS"
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        // Timeline dot + connector line
-        Box(
-            modifier = Modifier.width(28.dp),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            if (!isLast) {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 12.dp)
-                        .width(2.dp)
-                        .height(48.dp)
-                        .background(Color(0xFFCBD5E1))
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .padding(top = 2.dp)
-                    .size(14.dp)
-                    .border(2.5.dp, chipTextColor, androidx.compose.foundation.shape.CircleShape)
-                    .background(Color.White, shape = androidx.compose.foundation.shape.CircleShape)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(6.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            // Pill tag
-            Box(
-                modifier = Modifier
-                    .background(chipBgColor, shape = RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = label,
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    color = chipTextColor
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // File Path or status text
-            Text(
-                text = log.text,
-                fontSize = 11.5.sp,
-                fontFamily = FontFamily.Monospace,
-                color = Color(0xFF64748B),
-                lineHeight = 16.sp
-            )
-        }
-    }
-}
-
-private fun imageOfLog(log: LogEntry): androidx.compose.ui.graphics.vector.ImageVector {
-    return when (log) {
-        is LogEntry.Success -> if (log.isDryRun) Icons.Default.Search else Icons.Default.Check
-        is LogEntry.Error -> Icons.Default.Error
-        is LogEntry.ScanProgress -> Icons.Default.Search
-        is LogEntry.Info -> Icons.Default.Info
-    }
-}
-
-@Composable
-fun AccentOptionCard(
+fun TargetButton(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isActive: Boolean,
+    isDisabled: Boolean,
     accent: AppAccent,
-    isSelected: Boolean,
+    testTag: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val bgColor = if (isActive) accent.primary else Color.White
+    val borderColor = if (isActive) accent.primary else Color(0xFFDEE3EF)
+    val textColor = if (isActive) Color.White else Color(0xFF12172B)
+    val iconBoxBg = if (isActive) Color.White.copy(alpha = 0.16f) else Color(0xFFF6F8FC)
+    val iconTint = if (isActive) Color.White else accent.primary
+
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) accent.container else Color.White
-        ),
-        border = BorderStroke(
-            if (isSelected) 2.5.dp else 1.dp,
-            if (isSelected) accent.primary else Color(0xFFE2E8F0)
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 3.dp else 0.dp
-        ),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        border = BorderStroke(1.dp, borderColor),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier
-            .height(76.dp)
-            .clickable(onClick = onClick)
+            .then(if (isDisabled) Modifier.background(bgColor.copy(alpha = 0.45f), RoundedCornerShape(18.dp)) else Modifier)
+            .clickable(enabled = !isDisabled, onClick = onClick)
+            .testTag(testTag)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(iconBoxBg),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .background(
-                            brush = if (accent.isMixed) {
-                                Brush.linearGradient(colors = listOf(accent.primary, accent.secondaryColor))
-                            } else {
-                                Brush.linearGradient(colors = listOf(accent.primary, accent.primary))
-                            },
-                            shape = androidx.compose.foundation.shape.CircleShape
-                        )
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = title,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.5.sp,
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+// ==========================================
+// Deletion Progress Card (Running / Complete)
+// ==========================================
+
+@Composable
+fun ProgressCard(
+    screenState: ScreenState,
+    settings: CleanerSettings,
+    accent: AppAccent,
+    onCancel: () -> Unit
+) {
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.35f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(600, easing = androidx.compose.animation.core.LinearEasing),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
+        shape = RoundedCornerShape(22.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp)
+        ) {
+            if (screenState is ScreenState.ScanInProgress) {
+                // Running State
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (isSelected) {
+                    Text(
+                        text = "DELETION PROGRESS",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF9CA3B8),
+                        letterSpacing = 0.8.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xFFE1F8EF))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(Color(0xFF00B37E).copy(alpha = pulseAlpha))
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Running",
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF00B37E)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Progress Bar
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color(0xFFF6F8FC))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(fraction = 0.65f)
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(accent.primary, Color(0xFF00B37E))
+                                )
+                            )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "Path: ${screenState.currentPath}",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.5.sp,
+                    color = Color(0xFF636C82),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = AnnotatedString("Scanned: ") + AnnotatedString("${screenState.scannedCount}", spanStyle = androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFF12172B))),
+                        fontSize = 12.5.sp,
+                        color = Color(0xFF636C82)
+                    )
+                    Text(
+                        text = AnnotatedString(if (settings.dryRun) "Found: " else "Deleted: ") + AnnotatedString("${screenState.deletedCount}", spanStyle = androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFF12172B))),
+                        fontSize = 12.5.sp,
+                        color = Color(0xFF636C82)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                OutlinedButton(
+                    onClick = onCancel,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF6B52)),
+                    border = BorderStroke(1.5.dp, Color(0xFFFF6B52)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(42.dp)
+                ) {
+                    Text("Cancel Operation", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                }
+            } else if (screenState is ScreenState.Finished) {
+                // Complete State
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(Color(0xFF00B37E)),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = null,
@@ -2573,34 +1624,686 @@ fun AccentOptionCard(
                             modifier = Modifier.size(14.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = if (screenState.dryRun) "Scan Complete!" else "Deletion Complete!",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color(0xFF12172B)
+                    )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${screenState.totalScanned}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 19.sp,
+                            color = Color(0xFF1F2A63)
+                        )
+                        Text(
+                            text = "SCANNED",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF9CA3B8),
+                            letterSpacing = 0.6.sp
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${screenState.totalDeleted}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 19.sp,
+                            color = Color(0xFF1F2A63)
+                        )
+                        Text(
+                            text = if (screenState.dryRun) "FOUND" else "DELETED",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF9CA3B8),
+                            letterSpacing = 0.6.sp
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = String.format("%.2fs", screenState.durationMs / 1000.0),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 19.sp,
+                            color = Color(0xFF1F2A63)
+                        )
+                        Text(
+                            text = "TIME",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF9CA3B8),
+                            letterSpacing = 0.6.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==========================================
+// Live Log Card Composable
+// ==========================================
+
+@Composable
+fun LiveLogCard(
+    logs: List<LogEntry>,
+    isScanning: Boolean,
+    accent: AppAccent,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "logPulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.35f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(600, easing = androidx.compose.animation.core.LinearEasing),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = accent.displayName,
-                    fontSize = 11.sp,
-                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
-                    color = if (isSelected) accent.text else Color(0xFF475569),
-                    textAlign = TextAlign.Center
+                    text = "Live Log",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color(0xFF12172B)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(if (isScanning) Color(0xFFE1F8EF) else Color.White)
+                        .border(1.dp, if (isScanning) Color(0xFFE1F8EF) else Color(0xFFDEE3EF), RoundedCornerShape(50))
+                        .padding(horizontal = 9.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(
+                                    if (isScanning) Color(0xFF00B37E).copy(alpha = pulseAlpha) else Color(0xFF9CA3B8)
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = if (isScanning) "Running" else "Idle",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isScanning) Color(0xFF00B37E) else Color(0xFF9CA3B8)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            if (logs.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 30.dp)
+                        .testTag("log_idle_message_box"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No activity yet — run a scan to see deleted folders here.",
+                        fontSize = 13.sp,
+                        color = Color(0xFF9CA3B8),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                val listState = rememberLazyListState()
+
+                LaunchedEffect(logs.size) {
+                    if (logs.isNotEmpty()) {
+                        listState.animateScrollToItem(logs.size - 1)
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(logs.size) { index ->
+                            LogTimelineEntry(log = logs[index], accent = accent)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LogTimelineEntry(log: LogEntry, accent: AppAccent) {
+    val tagText = when (log) {
+        is LogEntry.Success -> if (log.isDryRun) "EMPTY" else "DELETED"
+        is LogEntry.Error -> "FAILED"
+        is LogEntry.ScanProgress -> "SCAN"
+        is LogEntry.Info -> "STATUS"
+    }
+
+    val tagBg = when (log) {
+        is LogEntry.Success -> Color(0xFFE1F8EF)
+        is LogEntry.Error -> Color(0xFFFEF2F2)
+        else -> Color(0xFFF6F8FC)
+    }
+
+    val tagTextColor = when (log) {
+        is LogEntry.Success -> Color(0xFF00B37E)
+        is LogEntry.Error -> Color(0xFFDC2626)
+        else -> accent.primary
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 14.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        // Vertical Timeline node
+        Box(
+            modifier = Modifier
+                .padding(top = 3.dp, end = 12.dp)
+                .size(11.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(Color(0xFFE1F8EF))
+                .border(2.dp, Color(0xFF00B37E), androidx.compose.foundation.shape.CircleShape)
+        )
+
+        Column(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(tagBg)
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = tagText,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tagTextColor,
+                    letterSpacing = 0.3.sp
                 )
             }
 
-            if (isSelected) {
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = log.text,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp,
+                color = Color(0xFF636C82),
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
+// ==========================================
+// Folder Settings Screen Composable
+// ==========================================
+
+@Composable
+fun FolderSettingsScreen(
+    settings: CleanerSettings,
+    rootAccessGranted: Boolean,
+    accent: AppAccent,
+    onBack: () -> Unit,
+    onUpdateSettings: ((CleanerSettings) -> CleanerSettings) -> Unit,
+    onAttemptRoot: () -> Unit,
+    onDisableRoot: () -> Unit,
+    onPickExternalUri: () -> Unit,
+    paddingValues: PaddingValues
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFEEF2F9))
+            .padding(paddingValues)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Settings Header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(Color.White)
+                    .border(1.dp, Color(0xFFDEE3EF), RoundedCornerShape(11.dp))
+                    .clickable(onClick = onBack)
+                    .testTag("settings_back_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color(0xFF12172B),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                text = "Folder Settings",
+                fontWeight = FontWeight.Bold,
+                fontSize = 19.sp,
+                color = Color(0xFF12172B)
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(accent.primary)
+                    .padding(horizontal = 13.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    text = "By BlazeFTL",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+            }
+        }
+
+        // Info Banner
+        Card(
+            colors = CardDefaults.cardColors(containerColor = accent.container),
+            border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.14f)),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .size(16.dp)
-                        .background(accent.primary, androidx.compose.foundation.shape.CircleShape),
+                        .size(26.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(accent.primary),
                     contentAlignment = Alignment.Center
                 ) {
+                    Text(
+                        text = "i",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = "System Engine Rules",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.5.sp,
+                        color = Color(0xFF12172B)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Configure parameters for search algorithms. Enabling deep system paths can slow down execution but exposes isolated junk caches.",
+                        fontSize = 12.5.sp,
+                        color = Color(0xFF636C82),
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+
+        // Section Label: ENGINE CONFIGURATION
+        Text(
+            text = "ENGINE CONFIGURATION",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF9CA3B8),
+            letterSpacing = 0.8.sp
+        )
+
+        // Rule 1: Clean Android Folders
+        RuleRow(
+            title = "Clean Android Folders",
+            subtitle = "Scan/clean folders inside Android system folder",
+            icon = Icons.Default.FolderSpecial,
+            checked = settings.cleanAndroidFolder,
+            accent = accent,
+            testTag = "clean_android_folder_switch",
+            onCheckedChange = { checked ->
+                onUpdateSettings { it.copy(cleanAndroidFolder = checked) }
+            }
+        )
+
+        // Rule 2: Delete .nomedia Folders
+        RuleRow(
+            title = "Delete .nomedia Folders",
+            subtitle = "Delete folders containing only .nomedia files",
+            icon = Icons.Default.VideocamOff,
+            checked = settings.treatNoMediaAsEmpty,
+            accent = accent,
+            testTag = "treat_nomedia_as_empty_switch",
+            onCheckedChange = { checked ->
+                onUpdateSettings { it.copy(treatNoMediaAsEmpty = checked) }
+            }
+        )
+
+        // Rule 3: Hide Preview Mode
+        RuleRow(
+            title = "Hide Preview Mode",
+            subtitle = "Hide the Preview Mode card from the main screen",
+            icon = Icons.Default.VisibilityOff,
+            checked = settings.hideDryRun,
+            accent = accent,
+            testTag = "hide_preview_mode_switch",
+            onCheckedChange = { checked ->
+                onUpdateSettings { it.copy(hideDryRun = checked) }
+            }
+        )
+
+        // Rule 4: Root Access
+        RuleRow(
+            title = "Root Access",
+            subtitle = if (rootAccessGranted) "SU root access granted" else "Grant SU root access for system directories",
+            icon = Icons.Default.Shield,
+            checked = rootAccessGranted,
+            accent = accent,
+            testTag = "root_access_switch",
+            onCheckedChange = { checked ->
+                if (checked) onAttemptRoot() else onDisableRoot()
+            }
+        )
+
+        // Rule 5: External Storage Location
+        RuleRow(
+            title = "External Storage Location",
+            subtitle = "Scan custom external storage location",
+            icon = Icons.Default.Layers,
+            checked = settings.enableExternalStorage,
+            accent = accent,
+            testTag = "enable_external_storage_switch",
+            onCheckedChange = { checked ->
+                onUpdateSettings { it.copy(enableExternalStorage = checked) }
+            }
+        )
+
+        if (settings.enableExternalStorage) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Storage Path",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.5.sp,
+                            color = Color(0xFF12172B)
+                        )
+                        Text(
+                            text = if (settings.externalStorageUri.isNotEmpty()) settings.externalStorageUri else "No path selected",
+                            fontSize = 11.sp,
+                            color = Color(0xFF636C82),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Button(
+                        onClick = onPickExternalUri,
+                        colors = ButtonDefaults.buttonColors(containerColor = accent.container),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = if (settings.externalStorageUri.isNotEmpty()) "Change" else "Choose",
+                            color = accent.primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // Section Label: APP ACCENT COLOR
+        Text(
+            text = "APP ACCENT COLOR",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF9CA3B8),
+            letterSpacing = 0.8.sp
+        )
+
+        // Color Grid (3 columns)
+        val accents = AppAccent.values()
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            accents.toList().chunked(3).forEach { rowAccents ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    rowAccents.forEach { acc ->
+                        AccentColorCard(
+                            accentOption = acc,
+                            isSelected = settings.accentName.equals(acc.displayName, ignoreCase = true),
+                            onClick = {
+                                onUpdateSettings { it.copy(accentName = acc.displayName) }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (rowAccents.size < 3) {
+                        repeat(3 - rowAccents.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+
+        // Close Button
+        Button(
+            onClick = onBack,
+            colors = ButtonDefaults.buttonColors(containerColor = accent.primary),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Close", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun RuleRow(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    checked: Boolean,
+    accent: AppAccent,
+    testTag: String,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF6F8FC)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accent.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.5.sp,
+                    color = Color(0xFF12172B)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 11.5.sp,
+                    color = Color(0xFF636C82),
+                    lineHeight = 15.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = accent.primary,
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color(0xFFDEE3EF)
+                ),
+                modifier = Modifier.testTag(testTag)
+            )
+        }
+    }
+}
+
+@Composable
+fun AccentColorCard(
+    accentOption: AppAccent,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(
+            if (isSelected) 2.dp else 1.dp,
+            if (isSelected) accentOption.primary else Color(0xFFDEE3EF)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = modifier
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(
+                        brush = if (accentOption.isMixed) {
+                            Brush.linearGradient(colors = listOf(accentOption.primary, accentOption.secondaryColor))
+                        } else {
+                            Brush.linearGradient(colors = listOf(accentOption.primary, accentOption.primary))
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(10.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(9.dp))
+
+            Text(
+                text = accentOption.displayName,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF12172B),
+                textAlign = TextAlign.Center,
+                lineHeight = 14.sp
+            )
         }
     }
 }

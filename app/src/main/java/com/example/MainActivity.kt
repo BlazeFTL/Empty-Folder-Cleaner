@@ -74,25 +74,31 @@ enum class AppAccent(
     val primary: Color,
     val container: Color,
     val text: Color,
-    val border: Color
+    val border: Color,
+    val secondaryColor: Color = primary,
+    val isMixed: Boolean = false
 ) {
-    BLUE("Breeze Blue", Color(0xFF2563EB), Color(0xFFEFF6FF), Color(0xFF1E3A8A), Color(0xFFBFDBFE)),
-    GREEN("Emerald Forest", Color(0xFF059669), Color(0xFFECFDF5), Color(0xFF064E3B), Color(0xFFA7F3D0)),
-    AMBER("Warm Amber", Color(0xFFD97706), Color(0xFFFEF3C7), Color(0xFF78350F), Color(0xFFFDE68A)),
-    PURPLE("Royal Purple", Color(0xFF8B5CF6), Color(0xFFF5F3FF), Color(0xFF4C1D95), Color(0xFFDDD6FE)),
-    CRIMSON("Blaze Crimson", Color(0xFFE11D48), Color(0xFFFFF1F2), Color(0xFF881337), Color(0xFFFFC5C5)),
-    TEAL("Ocean Teal", Color(0xFF0D9488), Color(0xFFF0FDFA), Color(0xFF115E59), Color(0xFF99F6E4)),
-    ORANGE("Sunset Orange", Color(0xFFF97316), Color(0xFFFFF7ED), Color(0xFF9A3412), Color(0xFFFFDDB3)),
-    INDIGO("Deep Indigo", Color(0xFF4F46E5), Color(0xFFE0E7FF), Color(0xFF3730A3), Color(0xFFC7D2FE)),
-    PINK("Rose Pink", Color(0xFFDB2777), Color(0xFFFFF1F2), Color(0xFF9F1239), Color(0xFFFECDD3)),
-    MIDNIGHT_MINT("Midnight Mint", Color(0xFF4F46E5), Color(0xFFECFDF5), Color(0xFF1E1B4B), Color(0xFFA7F3D0)),
-    NEON_SYNTH("Neon Synth", Color(0xFF9333EA), Color(0xFFECFEFF), Color(0xFF581C87), Color(0xFF99F6E4)),
-    CYBER_CITRUS("Cyber Citrus", Color(0xFFF43F5E), Color(0xFFFEFCE8), Color(0xFF881337), Color(0xFFFEF08A)),
-    COSMIC_LAVENDER("Cosmic Lavender", Color(0xFF7C3AED), Color(0xFFF0F9FF), Color(0xFF4C1D95), Color(0xFFBAE6FD));
+    // 8 Fixed Solid MD3 Colors
+    SAPPHIRE("Sapphire Blue", Color(0xFF0284C7), Color(0xFFF0F9FF), Color(0xFF0369A1), Color(0xFFBAE6FD)),
+    EMERALD("Emerald Green", Color(0xFF10B981), Color(0xFFECFDF5), Color(0xFF047857), Color(0xFFA7F3D0)),
+    AMBER("Warm Amber", Color(0xFFF59E0B), Color(0xFFFFFBEB), Color(0xFFB45309), Color(0xFFFDE68A)),
+    CRIMSON("Blaze Crimson", Color(0xFFE11D48), Color(0xFFFFF1F2), Color(0xFFBE123C), Color(0xFFFECDD3)),
+    CORAL("Coral Orange", Color(0xFFEA580C), Color(0xFFFFF7ED), Color(0xFFC2410C), Color(0xFFFFEDD5)),
+    TEAL("Ocean Teal", Color(0xFF0D9488), Color(0xFFF0FDFA), Color(0xFF0F766E), Color(0xFF99F6E4)),
+    VIOLET("Royal Violet", Color(0xFF7C3AED), Color(0xFFF5F3FF), Color(0xFF6D28D9), Color(0xFFDDD6FE)),
+    ROSE("Rose Pink", Color(0xFFDB2777), Color(0xFFFDF2F8), Color(0xFFBE185D), Color(0xFFFBCFE8)),
+
+    // 6 Mixed Dual-Accent Pairs
+    OCEAN_BREEZE("Ocean Breeze", Color(0xFF06B6D4), Color(0xFFECFEFF), Color(0xFF0E7490), Color(0xFF99F6E4), secondaryColor = Color(0xFF1D4ED8), isMixed = true),
+    MINT_AURORA("Mint Aurora", Color(0xFF10B981), Color(0xFFECFDF5), Color(0xFF047857), Color(0xFFA7F3D0), secondaryColor = Color(0xFF0F766E), isMixed = true),
+    ELECTRIC_VELVET("Electric Velvet", Color(0xFF8B5CF6), Color(0xFFF5F3FF), Color(0xFF6D28D9), Color(0xFFDDD6FE), secondaryColor = Color(0xFFEC4899), isMixed = true),
+    CITRUS_FLAME("Citrus Flame", Color(0xFFF59E0B), Color(0xFFFFFBEB), Color(0xFFB45309), Color(0xFFFDE68A), secondaryColor = Color(0xFFEF4444), isMixed = true),
+    COSMIC_DUSK("Cosmic Dusk", Color(0xFF6366F1), Color(0xFFEEF2FF), Color(0xFF4338CA), Color(0xFFC7D2FE), secondaryColor = Color(0xFFA855F7), isMixed = true),
+    CYBER_LIME("Cyber Lime", Color(0xFF84CC16), Color(0xFFF7FEE7), Color(0xFF4D7C0F), Color(0xFFD9F99D), secondaryColor = Color(0xFF15803D), isMixed = true);
 
     companion object {
         fun fromName(name: String): AppAccent {
-            return values().firstOrNull { it.displayName == name } ?: BLUE
+            return values().firstOrNull { it.displayName == name } ?: SAPPHIRE
         }
     }
 }
@@ -104,7 +110,7 @@ data class CleanerSettings(
     val dryRun: Boolean = false,
     val cleanAndroidFolder: Boolean = false,
     val hideDryRun: Boolean = false,
-    val accentName: String = "Breeze Blue",
+    val accentName: String = "Sapphire Blue",
     val enableExternalStorage: Boolean = false,
     val externalStorageUri: String = "",
     val scanDirectDataMedia: Boolean = true
@@ -158,7 +164,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
             dryRun = prefs.getBoolean("dry_run", false),
             cleanAndroidFolder = prefs.getBoolean("clean_android", false),
             hideDryRun = prefs.getBoolean("hide_dry_run", false),
-            accentName = prefs.getString("accent_name", "Breeze Blue") ?: "Breeze Blue",
+            accentName = prefs.getString("accent_name", "Sapphire Blue") ?: "Sapphire Blue",
             enableExternalStorage = prefs.getBoolean("enable_external", false),
             externalStorageUri = prefs.getString("external_uri", "") ?: "",
             scanDirectDataMedia = prefs.getBoolean("scan_direct_data_media", true)
@@ -1412,8 +1418,12 @@ fun FolderDeleterDashboard(
                     }
                 }
 
-                // Direct /data/media/ Scan Card (Visible when Root Access is active)
-                if (rootAccessGranted) {
+                // Direct /data/media/ Scan Card (Visible with smooth transition when Root Access is active)
+                AnimatedVisibility(
+                    visible = rootAccessGranted,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
@@ -1486,7 +1496,7 @@ fun FolderDeleterDashboard(
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp)
+                        .padding(top = 4.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -1606,24 +1616,24 @@ fun FolderDeleterDashboard(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Section 1: Solid MD3 Accents
                 Text(
-                    text = "APP ACCENT COLOR",
+                    text = "SOLID FIXED COLORS",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF64748B),
                     letterSpacing = 1.sp,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
+                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
                 )
 
-                // Grid of Accent Preset Cards
                 Column(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 24.dp)
+                        .padding(bottom = 20.dp)
                 ) {
-                    val presets = AppAccent.values().toList()
-                    presets.chunked(3).forEach { rowPresets ->
+                    val solidPresets = AppAccent.values().filter { !it.isMixed }
+                    solidPresets.chunked(3).forEach { rowPresets ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1638,7 +1648,47 @@ fun FolderDeleterDashboard(
                                     modifier = Modifier.weight(1f)
                                 )
                             }
-                            // Fill remaining space if row is not full
+                            if (rowPresets.size < 3) {
+                                repeat(3 - rowPresets.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 2: Dual-Accent Mixes
+                Text(
+                    text = "DUAL-ACCENT MIXES (GRADIENTS)",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF64748B),
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                )
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp)
+                ) {
+                    val mixedPresets = AppAccent.values().filter { it.isMixed }
+                    mixedPresets.chunked(3).forEach { rowPresets ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            rowPresets.forEach { p ->
+                                AccentOptionCard(
+                                    accent = p,
+                                    isSelected = settings.accentName == p.displayName,
+                                    onClick = {
+                                        viewModel.updateSettings { it.copy(accentName = p.displayName) }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                             if (rowPresets.size < 3) {
                                 repeat(3 - rowPresets.size) {
                                     Spacer(modifier = Modifier.weight(1f))
@@ -2461,9 +2511,11 @@ fun AccentOptionCard(
                 modifier = Modifier
                     .size(24.dp)
                     .background(
-                        brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                            colors = listOf(accent.primary, accent.border)
-                        ),
+                        brush = if (accent.isMixed) {
+                            Brush.linearGradient(colors = listOf(accent.primary, accent.secondaryColor))
+                        } else {
+                            Brush.linearGradient(colors = listOf(accent.primary, accent.primary))
+                        },
                         shape = androidx.compose.foundation.shape.CircleShape
                     )
             )
@@ -2472,7 +2524,8 @@ fun AccentOptionCard(
                 text = accent.displayName,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isSelected) accent.text else Color(0xFF475569)
+                color = if (isSelected) accent.text else Color(0xFF475569),
+                textAlign = TextAlign.Center
             )
         }
     }

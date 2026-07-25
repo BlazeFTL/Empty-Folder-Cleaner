@@ -14,7 +14,7 @@ import com.example.AppAccent
 
 @Composable
 fun MyApplicationTheme(
-    accent: AppAccent = AppAccent.BLUE,
+    accent: AppAccent = AppAccent.SAPPHIRE,
     darkTheme: Boolean = false, // Enforce light theme by default as per user request
     dynamicColor: Boolean = false, // Set to false to prioritize our handcrafted Clean Breeze theme
     content: @Composable () -> Unit,
@@ -26,17 +26,17 @@ fun MyApplicationTheme(
         lightColorScheme(
             primary = accent.primary,
             primaryContainer = accent.container,
-            secondary = accent.primary,
+            secondary = accent.secondaryColor,
             secondaryContainer = accent.container,
             tertiary = accent.text,
-            background = accent.container, // Fully opaque soft pastel background matching theme accent
-            surface = Color.White,          // Clean white surface for cards to create premium, high-contrast elevation
+            background = Color(0xFFF8FAFC), // Clean crisp slate background
+            surface = Color.White,          // Clean white surface for cards
             surfaceVariant = Color.White,
             onPrimary = Color.White,
             onSecondary = Color.White,
             onTertiary = Color.White,
-            onBackground = accent.text,
-            onSurface = accent.text,
+            onBackground = Color(0xFF0F172A),
+            onSurface = Color(0xFF0F172A),
             error = ErrorRed,
             onError = Color.White
         )

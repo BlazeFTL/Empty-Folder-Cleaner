@@ -1377,6 +1377,8 @@ fun FolderDeleterDashboard(
                             accent = accent,
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }

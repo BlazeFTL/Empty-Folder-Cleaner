@@ -27,7 +27,7 @@ Configurable engine parameters for the search algorithm:
 6 accent color themes: Breeze Blue, Emerald Forest, Warm Amber, Royal Purple, Blaze Crimson, Ocean Teal.
 
 ## Screenshots
-V1.2
+V1.2 - Ui Update
 <details><summary>Details</summary>
 <p>
 
@@ -40,8 +40,16 @@ V1.2
 </details>
 
 V1.1
+
+<details><summary>Details</summary>
+<p>
+  
 <img width="702" height="1560" alt="Screenshot_20260705-151109_Spark Launcher" src="https://github.com/user-attachments/assets/b4a7fdb2-0b74-438b-9949-0ac38d67ec0a" />
 <img width="702" height="1560" alt="Screenshot_20260705-151111_Spark Launcher" src="https://github.com/user-attachments/assets/9266086c-b3bf-43c7-9f9d-2391c717bf97" />
+
+
+</p>
+</details>
 
 | Main Screen | Folder Settings |
 |---|---|

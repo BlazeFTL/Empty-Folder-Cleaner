@@ -1742,6 +1742,7 @@ fun FolderDeleterDashboard(
                     .background(MaterialTheme.colorScheme.background)
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
 
                 // ==========================================
@@ -2334,7 +2335,7 @@ fun FolderDeleterDashboard(
                             ) {
                                 items(logs.size) { index ->
                                     val log = logs[index]
-                                    ConsoleLogLine(log = log, accent = accent)
+                                    ConsoleLogLine(log = log, accent = accent, isLast = index == logs.size - 1)
                                 }
                             }
                         }
@@ -2410,19 +2411,19 @@ fun FolderDeleterDashboard(
 // ==========================================
 
 @Composable
-fun ConsoleLogLine(log: LogEntry, accent: AppAccent) {
+fun ConsoleLogLine(log: LogEntry, accent: AppAccent, isLast: Boolean = false) {
     val chipBgColor = when (log) {
         is LogEntry.Success -> if (log.isDryRun) Color(0xFFF3E8FF) else Color(0xFFE1F8EF)
         is LogEntry.Error -> Color(0xFFFEE2E2)
         is LogEntry.ScanProgress -> Color(0xFFF1F5F9)
-        is LogEntry.Info -> accent.container
+        is LogEntry.Info -> Color(0xFFE1F8EF)
     }
 
     val chipTextColor = when (log) {
         is LogEntry.Success -> if (log.isDryRun) Color(0xFF7C3AED) else Color(0xFF00B37E)
         is LogEntry.Error -> Color(0xFFEF4444)
         is LogEntry.ScanProgress -> Color(0xFF64748B)
-        is LogEntry.Info -> accent.primary
+        is LogEntry.Info -> Color(0xFF00B37E)
     }
 
     val label = when (log) {
@@ -2435,17 +2436,33 @@ fun ConsoleLogLine(log: LogEntry, accent: AppAccent) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(bottom = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // Timeline dot
+        // Timeline dot + connector line
         Box(
-            modifier = Modifier
-                .padding(top = 4.dp, end = 12.dp)
-                .size(12.dp)
-                .border(2.dp, chipTextColor, androidx.compose.foundation.shape.CircleShape)
-                .background(Color.White, shape = androidx.compose.foundation.shape.CircleShape)
-        )
+            modifier = Modifier.width(28.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            if (!isLast) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 12.dp)
+                        .width(2.dp)
+                        .height(48.dp)
+                        .background(Color(0xFFCBD5E1))
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .size(14.dp)
+                    .border(2.5.dp, chipTextColor, androidx.compose.foundation.shape.CircleShape)
+                    .background(Color.White, shape = androidx.compose.foundation.shape.CircleShape)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(6.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             // Pill tag
@@ -2456,7 +2473,7 @@ fun ConsoleLogLine(log: LogEntry, accent: AppAccent) {
             ) {
                 Text(
                     text = label,
-                    fontSize = 9.sp,
+                    fontSize = 10.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     color = chipTextColor
@@ -2468,10 +2485,10 @@ fun ConsoleLogLine(log: LogEntry, accent: AppAccent) {
             // File Path or status text
             Text(
                 text = log.text,
-                fontSize = 11.sp,
-                fontFamily = if (log is LogEntry.Success || log is LogEntry.ScanProgress) FontFamily.Monospace else FontFamily.SansSerif,
+                fontSize = 11.5.sp,
+                fontFamily = FontFamily.Monospace,
                 color = Color(0xFF64748B),
-                lineHeight = 15.sp
+                lineHeight = 16.sp
             )
         }
     }

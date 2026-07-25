@@ -78,42 +78,41 @@ enum class AppAccent(
     val secondaryColor: Color = primary,
     val isMixed: Boolean = false
 ) {
-    // 8 Fixed Solid MD3 Colors
-    SAPPHIRE("Sapphire Blue", Color(0xFF0284C7), Color(0xFFF0F9FF), Color(0xFF0369A1), Color(0xFFBAE6FD)),
-    EMERALD("Emerald Green", Color(0xFF10B981), Color(0xFFECFDF5), Color(0xFF047857), Color(0xFFA7F3D0)),
-    AMBER("Warm Amber", Color(0xFFF59E0B), Color(0xFFFFFBEB), Color(0xFFB45309), Color(0xFFFDE68A)),
-    CRIMSON("Blaze Crimson", Color(0xFFE11D48), Color(0xFFFFF1F2), Color(0xFFBE123C), Color(0xFFFECDD3)),
-    CORAL("Coral Orange", Color(0xFFEA580C), Color(0xFFFFF7ED), Color(0xFFC2410C), Color(0xFFFFEDD5)),
-    TEAL("Ocean Teal", Color(0xFF0D9488), Color(0xFFF0FDFA), Color(0xFF0F766E), Color(0xFF99F6E4)),
-    VIOLET("Royal Violet", Color(0xFF7C3AED), Color(0xFFF5F3FF), Color(0xFF6D28D9), Color(0xFFDDD6FE)),
-    ROSE("Rose Pink", Color(0xFFDB2777), Color(0xFFFDF2F8), Color(0xFFBE185D), Color(0xFFFBCFE8)),
+    // 13 Preset Tailwind Color Styles matching user mockup
+    BREEZE_BLUE("Breeze Blue", Color(0xFF2F3C7E), Color(0xFFECEEF9), Color(0xFF1F2A63), Color(0xFFDEE3EF)),
+    EMERALD_FOREST("Emerald Forest", Color(0xFF00B37E), Color(0xFFE1F8EF), Color(0xFF007A56), Color(0xFFA3F0D3)),
+    WARM_AMBER("Warm Amber", Color(0xFFF5A623), Color(0xFFFFFBEB), Color(0xFFB45309), Color(0xFFFDE68A)),
+    ROYAL_PURPLE("Royal Purple", Color(0xFF8B5CF6), Color(0xFFF5F3FF), Color(0xFF6D28D9), Color(0xFFDDD6FE)),
+    BLAZE_CRIMSON("Blaze Crimson", Color(0xFFE63950), Color(0xFFFFF1F2), Color(0xFFBE123C), Color(0xFFFECDD3)),
+    OCEAN_TEAL("Ocean Teal", Color(0xFF14B8A6), Color(0xFFF0FDFA), Color(0xFF0F766E), Color(0xFF99F6E4)),
+    SUNSET_ORANGE("Sunset Orange", Color(0xFFFF8A3D), Color(0xFFFFF7ED), Color(0xFFC2410C), Color(0xFFFFEDD5)),
+    DEEP_INDIGO("Deep Indigo", Color(0xFF3F4BD1), Color(0xFFEEF2FF), Color(0xFF2833A5), Color(0xFFC7D2FE)),
+    ROSE_PINK("Rose Pink", Color(0xFFFF5C8A), Color(0xFFFDF2F8), Color(0xFFBE185D), Color(0xFFFBCFE8)),
 
-    // 6 Mixed Dual-Accent Pairs
-    OCEAN_BREEZE("Ocean Breeze", Color(0xFF06B6D4), Color(0xFFECFEFF), Color(0xFF0E7490), Color(0xFF99F6E4), secondaryColor = Color(0xFF1D4ED8), isMixed = true),
-    MINT_AURORA("Mint Aurora", Color(0xFF10B981), Color(0xFFECFDF5), Color(0xFF047857), Color(0xFFA7F3D0), secondaryColor = Color(0xFF0F766E), isMixed = true),
-    ELECTRIC_VELVET("Electric Velvet", Color(0xFF8B5CF6), Color(0xFFF5F3FF), Color(0xFF6D28D9), Color(0xFFDDD6FE), secondaryColor = Color(0xFFEC4899), isMixed = true),
-    CITRUS_FLAME("Citrus Flame", Color(0xFFF59E0B), Color(0xFFFFFBEB), Color(0xFFB45309), Color(0xFFFDE68A), secondaryColor = Color(0xFFEF4444), isMixed = true),
-    COSMIC_DUSK("Cosmic Dusk", Color(0xFF6366F1), Color(0xFFEEF2FF), Color(0xFF4338CA), Color(0xFFC7D2FE), secondaryColor = Color(0xFFA855F7), isMixed = true),
-    CYBER_LIME("Cyber Lime", Color(0xFF84CC16), Color(0xFFF7FEE7), Color(0xFF4D7C0F), Color(0xFFD9F99D), secondaryColor = Color(0xFF15803D), isMixed = true);
+    // Dual-accent gradient mixes
+    MIDNIGHT_MINT("Midnight Mint", Color(0xFF2E8FB0), Color(0xFFE1F8EF), Color(0xFF0F766E), Color(0xFFA3F0D3), secondaryColor = Color(0xFF00B37E), isMixed = true),
+    NEON_SYNTH("Neon Synth", Color(0xFF7C6CF0), Color(0xFFF5F3FF), Color(0xFF4C3EC0), Color(0xFFDDD6FE), secondaryColor = Color(0xFF3E7BFA), isMixed = true),
+    CYBER_CITRUS("Cyber Citrus", Color(0xFFFF7A45), Color(0xFFFFF7ED), Color(0xFFC2410C), Color(0xFFFFEDD5), secondaryColor = Color(0xFFFF5C8A), isMixed = true),
+    COSMIC_LAVENDER("Cosmic Lavender", Color(0xFF9C8CF5), Color(0xFFF5F3FF), Color(0xFF6D28D9), Color(0xFFDDD6FE));
 
     companion object {
         fun fromName(name: String): AppAccent {
             return values().firstOrNull { it.displayName.equals(name, ignoreCase = true) }
-                ?: when (name) {
-                    "Breeze Blue" -> SAPPHIRE
-                    "Emerald Forest" -> EMERALD
-                    "Warm Amber" -> AMBER
-                    "Royal Purple" -> VIOLET
-                    "Blaze Crimson" -> CRIMSON
-                    "Sunset Orange" -> CORAL
-                    "Deep Indigo" -> COSMIC_DUSK
-                    "Rose Pink" -> ROSE
-                    "Midnight Mint" -> MINT_AURORA
-                    "Neon Synth" -> ELECTRIC_VELVET
-                    "Cyber Citrus" -> CITRUS_FLAME
-                    "Cosmic Lavender" -> VIOLET
-                    "Ocean Teal" -> TEAL
-                    else -> SAPPHIRE
+                ?: when (name.lowercase()) {
+                    "sapphire blue", "breeze blue" -> BREEZE_BLUE
+                    "emerald green", "emerald forest" -> EMERALD_FOREST
+                    "warm amber" -> WARM_AMBER
+                    "royal violet", "royal purple" -> ROYAL_PURPLE
+                    "blaze crimson" -> BLAZE_CRIMSON
+                    "coral orange", "sunset orange" -> SUNSET_ORANGE
+                    "deep indigo", "cosmic dusk" -> DEEP_INDIGO
+                    "rose pink" -> ROSE_PINK
+                    "midnight mint", "mint aurora" -> MIDNIGHT_MINT
+                    "neon synth", "electric velvet" -> NEON_SYNTH
+                    "cyber citrus", "citrus flame" -> CYBER_CITRUS
+                    "cosmic lavender" -> COSMIC_LAVENDER
+                    "ocean teal", "ocean breeze" -> OCEAN_TEAL
+                    else -> BREEZE_BLUE
                 }
         }
     }
@@ -126,7 +125,7 @@ data class CleanerSettings(
     val dryRun: Boolean = false,
     val cleanAndroidFolder: Boolean = false,
     val hideDryRun: Boolean = false,
-    val accentName: String = "Sapphire Blue",
+    val accentName: String = "Breeze Blue",
     val enableExternalStorage: Boolean = false,
     val externalStorageUri: String = "",
     val scanDirectDataMedia: Boolean = true
@@ -180,7 +179,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
             dryRun = prefs.getBoolean("dry_run", false),
             cleanAndroidFolder = prefs.getBoolean("clean_android", false),
             hideDryRun = prefs.getBoolean("hide_dry_run", false),
-            accentName = AppAccent.fromName(prefs.getString("accent_name", "Sapphire Blue") ?: "Sapphire Blue").displayName,
+            accentName = AppAccent.fromName(prefs.getString("accent_name", "Breeze Blue") ?: "Breeze Blue").displayName,
             enableExternalStorage = prefs.getBoolean("enable_external", false),
             externalStorageUri = prefs.getString("external_uri", "") ?: "",
             scanDirectDataMedia = prefs.getBoolean("scan_direct_data_media", true)

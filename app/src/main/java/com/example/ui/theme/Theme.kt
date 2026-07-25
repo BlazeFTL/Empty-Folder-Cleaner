@@ -14,7 +14,7 @@ import com.example.AppAccent
 
 @Composable
 fun MyApplicationTheme(
-    accent: AppAccent = AppAccent.SAPPHIRE,
+    accent: AppAccent = AppAccent.BREEZE_BLUE,
     darkTheme: Boolean = false, // Enforce light theme by default as per user request
     dynamicColor: Boolean = false, // Set to false to prioritize our handcrafted Clean Breeze theme
     content: @Composable () -> Unit,

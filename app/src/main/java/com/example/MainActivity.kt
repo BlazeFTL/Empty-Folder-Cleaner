@@ -966,11 +966,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
-                FolderDeleterDashboard(
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+            FolderDeleterDashboard(
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }
@@ -1657,7 +1655,7 @@ fun FolderDeleterDashboard(
                             rowPresets.forEach { p ->
                                 AccentOptionCard(
                                     accent = p,
-                                    isSelected = settings.accentName == p.displayName,
+                                    isSelected = AppAccent.fromName(settings.accentName) == p,
                                     onClick = {
                                         viewModel.updateSettings { it.copy(accentName = p.displayName) }
                                     },
@@ -1698,7 +1696,7 @@ fun FolderDeleterDashboard(
                             rowPresets.forEach { p ->
                                 AccentOptionCard(
                                     accent = p,
-                                    isSelected = settings.accentName == p.displayName,
+                                    isSelected = AppAccent.fromName(settings.accentName) == p,
                                     onClick = {
                                         viewModel.updateSettings { it.copy(accentName = p.displayName) }
                                     },

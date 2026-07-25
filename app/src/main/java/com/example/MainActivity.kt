@@ -1140,7 +1140,7 @@ fun FolderDeleterDashboard(
                         Column(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .widthIn(max = 440.dp)
+                                .widthIn(max = 500.dp)
                                 .fillMaxWidth()
                                 .verticalScroll(rememberScrollState())
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -1550,13 +1550,13 @@ fun TargetButton(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 12.dp),
+                .padding(horizontal = 8.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(26.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(animatedIconBoxBg),
                 contentAlignment = Alignment.Center
@@ -1565,14 +1565,14 @@ fun TargetButton(
                     imageVector = icon,
                     contentDescription = null,
                     tint = animatedIconTint,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(13.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = title,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
+                fontSize = 12.5.sp,
                 color = animatedTextColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -2105,7 +2105,7 @@ fun FolderSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .widthIn(max = 440.dp)
+                .widthIn(max = 500.dp)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 14.dp),

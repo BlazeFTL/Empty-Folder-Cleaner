@@ -90,8 +90,11 @@ enum class AppAccent(
     val secondaryColor: Color = primary,
     val isMixed: Boolean = false
 ) {
+    // Concept Ash/Green Default
+    CONCEPT_ASH_GREEN("Concept Ash/Green", Color(0xFF5C6B8A), Color(0xFFECEEF9), Color(0xFF12172B), Color(0xFFDEE3EF), secondaryColor = Color(0xFF00B37E), isMixed = true),
+
     // 13 Preset Tailwind Color Styles matching user mockup
-    BREEZE_BLUE("Breeze Blue", Color(0xFF2F3C7E), Color(0xFFECEEF9), Color(0xFF1F2A63), Color(0xFFDEE3EF), secondaryColor = Color(0xFF00B37E), isMixed = true),
+    BREEZE_BLUE("Breeze Blue", Color(0xFF3E7BFA), Color(0xFFEEF4FF), Color(0xFF1E40AF), Color(0xFFBFDBFE)),
     EMERALD_FOREST("Emerald Forest", Color(0xFF00B37E), Color(0xFFE1F8EF), Color(0xFF007A56), Color(0xFFA3F0D3)),
     WARM_AMBER("Warm Amber", Color(0xFFF5A623), Color(0xFFFFFBEB), Color(0xFFB45309), Color(0xFFFDE68A)),
     ROYAL_PURPLE("Royal Purple", Color(0xFF8B5CF6), Color(0xFFF5F3FF), Color(0xFF6D28D9), Color(0xFFDDD6FE)),
@@ -111,6 +114,7 @@ enum class AppAccent(
         fun fromName(name: String): AppAccent {
             return values().firstOrNull { it.displayName.equals(name, ignoreCase = true) }
                 ?: when (name.lowercase()) {
+                    "concept ash/green", "ash green", "ash/green", "default" -> CONCEPT_ASH_GREEN
                     "sapphire blue", "breeze blue" -> BREEZE_BLUE
                     "emerald green", "emerald forest" -> EMERALD_FOREST
                     "warm amber" -> WARM_AMBER
@@ -124,7 +128,7 @@ enum class AppAccent(
                     "cyber citrus", "citrus flame" -> CYBER_CITRUS
                     "cosmic lavender" -> COSMIC_LAVENDER
                     "ocean teal", "ocean breeze" -> OCEAN_TEAL
-                    else -> BREEZE_BLUE
+                    else -> CONCEPT_ASH_GREEN
                 }
         }
     }
@@ -137,7 +141,7 @@ data class CleanerSettings(
     val dryRun: Boolean = false,
     val cleanAndroidFolder: Boolean = false,
     val hideDryRun: Boolean = false,
-    val accentName: String = "Breeze Blue",
+    val accentName: String = "Concept Ash/Green",
     val enableExternalStorage: Boolean = false,
     val externalStorageUri: String = "",
     val scanDirectDataMedia: Boolean = true
@@ -1136,8 +1140,9 @@ fun FolderDeleterDashboard(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .widthIn(max = 440.dp)
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .widthIn(max = 380.dp)
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 24.dp, vertical = 14.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                         // Header
@@ -1169,7 +1174,7 @@ fun FolderDeleterDashboard(
                                     .clip(RoundedCornerShape(50))
                                     .background(
                                         if (isPermissionGranted) {
-                                            if (accent == AppAccent.BREEZE_BLUE) Color(0xFFE1F8EF) else accent.container
+                                            if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFFE1F8EF) else accent.container
                                         } else Color(0xFFFEF2F2)
                                     )
                                     .clickable {
@@ -1185,7 +1190,7 @@ fun FolderDeleterDashboard(
                                         imageVector = if (isPermissionGranted) Icons.Default.Check else Icons.Default.Warning,
                                         contentDescription = null,
                                         tint = if (isPermissionGranted) {
-                                            if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
+                                            if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
                                         } else Color(0xFFDC2626),
                                         modifier = Modifier.size(13.dp)
                                     )
@@ -1195,7 +1200,7 @@ fun FolderDeleterDashboard(
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isPermissionGranted) {
-                                            if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
+                                            if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
                                         } else Color(0xFFDC2626)
                                     )
                                 }
@@ -1361,9 +1366,7 @@ fun FolderDeleterDashboard(
                             logs = logs,
                             isScanning = screenState is ScreenState.ScanInProgress,
                             accent = accent,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -1626,7 +1629,7 @@ fun ProgressCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(if (accent == AppAccent.BREEZE_BLUE) Color(0xFFE1F8EF) else accent.container)
+                            .background(if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFFE1F8EF) else accent.container)
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1635,14 +1638,14 @@ fun ProgressCard(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background((if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary).copy(alpha = pulseAlpha))
+                                    .background((if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary).copy(alpha = pulseAlpha))
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Running",
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
+                                color = if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
                             )
                         }
                     }
@@ -1676,7 +1679,9 @@ fun ProgressCard(
                             .clip(RoundedCornerShape(50))
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = if (accent.isMixed) listOf(accent.primary, accent.secondaryColor) else listOf(accent.primary, accent.primary.copy(alpha = 0.75f))
+                                    colors = if (accent == AppAccent.CONCEPT_ASH_GREEN) listOf(accent.primary, Color(0xFF00B37E))
+                                             else if (accent.isMixed) listOf(accent.primary, accent.secondaryColor)
+                                             else listOf(accent.primary, accent.primary.copy(alpha = 0.75f))
                                 )
                             )
                     )
@@ -1713,16 +1718,18 @@ fun ProgressCard(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                val cancelBtnColor = if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFFFF6B52) else accent.primary
+
                 OutlinedButton(
                     onClick = onCancel,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = accent.primary),
-                    border = BorderStroke(1.5.dp, accent.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = cancelBtnColor),
+                    border = BorderStroke(1.5.dp, cancelBtnColor),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(42.dp)
                 ) {
-                    Text("Cancel Operation", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text("Cancel Operation", fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
                 }
             } else if (screenState is ScreenState.Finished) {
                 // Complete State
@@ -1856,11 +1863,19 @@ fun LiveLogCard(
                     color = Color(0xFF12172B)
                 )
 
+                val runningBadgeBg = if (isScanning) {
+                    if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFFE1F8EF) else accent.container
+                } else Color.White
+
+                val runningBadgeTint = if (isScanning) {
+                    if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
+                } else Color(0xFF9CA3B8)
+
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(if (isScanning) accent.container else Color.White)
-                        .border(1.dp, if (isScanning) accent.container else Color(0xFFDEE3EF), RoundedCornerShape(50))
+                        .background(runningBadgeBg)
+                        .border(1.dp, if (isScanning) runningBadgeBg else Color(0xFFDEE3EF), RoundedCornerShape(50))
                         .padding(horizontal = 9.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1870,7 +1885,7 @@ fun LiveLogCard(
                                 .size(6.dp)
                                 .clip(androidx.compose.foundation.shape.CircleShape)
                                 .background(
-                                    if (isScanning) accent.primary.copy(alpha = pulseAlpha) else Color(0xFF9CA3B8)
+                                    if (isScanning) runningBadgeTint.copy(alpha = pulseAlpha) else Color(0xFF9CA3B8)
                                 )
                         )
                         Spacer(modifier = Modifier.width(5.dp))
@@ -1878,7 +1893,7 @@ fun LiveLogCard(
                             text = if (isScanning) "Running" else "Idle",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isScanning) accent.primary else Color(0xFF9CA3B8)
+                            color = runningBadgeTint
                         )
                     }
                 }
@@ -1890,7 +1905,7 @@ fun LiveLogCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 30.dp)
+                        .padding(vertical = 24.dp)
                         .testTag("log_idle_message_box"),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1910,7 +1925,11 @@ fun LiveLogCard(
                     }
                 }
 
-                Box(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 160.dp, max = 340.dp)
+                ) {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxWidth()
@@ -1945,19 +1964,19 @@ fun LogTimelineEntry(
     }
 
     val tagBg = when (log) {
-        is LogEntry.Success -> if (accent == AppAccent.BREEZE_BLUE) Color(0xFFE1F8EF) else accent.container
+        is LogEntry.Success -> if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFFE1F8EF) else accent.container
         is LogEntry.Error -> Color(0xFFFEF2F2)
         else -> accent.container
     }
 
     val tagTextColor = when (log) {
-        is LogEntry.Success -> if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
+        is LogEntry.Success -> if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
         is LogEntry.Error -> Color(0xFFDC2626)
         else -> accent.primary
     }
 
     val nodeBorderColor = when (log) {
-        is LogEntry.Success -> if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
+        is LogEntry.Success -> if (accent == AppAccent.CONCEPT_ASH_GREEN) Color(0xFF00B37E) else accent.primary
         is LogEntry.Error -> Color(0xFFDC2626)
         else -> accent.primary
     }
@@ -2077,9 +2096,9 @@ fun FolderSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 440.dp)
+                .widthIn(max = 380.dp)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 24.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         // Settings Header

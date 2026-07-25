@@ -33,6 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -2301,7 +2305,7 @@ fun FolderDeleterDashboard(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 220.dp, max = 380.dp)
+                            .height(240.dp)
                             .background(Color(0xFFFAFAFE), RoundedCornerShape(16.dp))
                             .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
                             .padding(12.dp)
@@ -2309,7 +2313,8 @@ fun FolderDeleterDashboard(
                         if (logs.isEmpty()) {
                             Box(
                                 contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier
+                                    .fillMaxSize()
                                     .testTag("log_idle_message_box")
                             ) {
                                 Text(
@@ -2321,20 +2326,33 @@ fun FolderDeleterDashboard(
                                 )
                             }
                         } else {
-                            val logScrollState = rememberScrollState()
+                            val noParentScrollConnection = remember {
+                                object : NestedScrollConnection {
+                                    override fun onPostScroll(
+                                        consumed: Offset,
+                                        available: Offset,
+                                        source: NestedScrollSource
+                                    ): Offset {
+                                        return available
+                                    }
+                                }
+                            }
+                            val lazyListState = rememberLazyListState()
 
                             LaunchedEffect(logs.size) {
                                 if (logs.isNotEmpty()) {
-                                    logScrollState.animateScrollTo(logScrollState.maxValue)
+                                    lazyListState.scrollToItem(logs.size - 1)
                                 }
                             }
 
-                            Column(
+                            LazyColumn(
+                                state = lazyListState,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .verticalScroll(logScrollState)
+                                    .nestedScroll(noParentScrollConnection)
                             ) {
-                                logs.forEachIndexed { index, log ->
+                                items(logs.size) { index ->
+                                    val log = logs[index]
                                     ConsoleLogLine(log = log, accent = accent, isLast = index == logs.size - 1)
                                 }
                             }

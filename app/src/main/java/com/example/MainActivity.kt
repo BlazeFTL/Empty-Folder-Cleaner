@@ -1016,16 +1016,10 @@ fun FolderDeleterDashboard(
     var isPermissionGranted by remember { mutableStateOf(checkHasTotalAccess()) }
     var showPermissionExplanatoryDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
-    var activeTarget by remember { mutableStateOf<String?>(null) } // "INTERNAL", "SD_CARD", "CUSTOM"
+    var activeTarget by remember { mutableStateOf<String?>("INTERNAL") } // "INTERNAL", "SD_CARD", "CUSTOM"
 
     BackHandler(enabled = showSettingsDialog) {
         showSettingsDialog = false
-    }
-
-    LaunchedEffect(screenState) {
-        if (screenState !is ScreenState.ScanInProgress) {
-            activeTarget = null
-        }
     }
 
     // Onboarding info display and first-launch permission request
@@ -1114,13 +1108,19 @@ fun FolderDeleterDashboard(
                         paddingValues = paddingValues
                     )
                 } else {
-                    Column(
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(paddingValues)
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.TopCenter
                     ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .widthIn(max = 440.dp)
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
                         // Header
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -1344,6 +1344,7 @@ fun FolderDeleterDashboard(
                 }
             }
         }
+        }
     }
 
     // Storage Access Permission Dialog
@@ -1416,26 +1417,46 @@ fun TargetButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bgColor = if (isActive) accent.primary else Color.White
-    val borderColor = if (isActive) accent.primary else Color(0xFFDEE3EF)
-    val textColor = if (isActive) Color.White else Color(0xFF12172B)
-    val iconBoxBg = if (isActive) Color.White.copy(alpha = 0.16f) else Color(0xFFF6F8FC)
-    val iconTint = if (isActive) Color.White else accent.primary
+    val animatedBgColor by animateColorAsState(
+        targetValue = if (isActive) accent.primary else Color.White,
+        animationSpec = tween(200),
+        label = "targetBg"
+    )
+    val animatedBorderColor by animateColorAsState(
+        targetValue = if (isActive) accent.primary else Color(0xFFDEE3EF),
+        animationSpec = tween(200),
+        label = "targetBorder"
+    )
+    val animatedTextColor by animateColorAsState(
+        targetValue = if (isActive) Color.White else Color(0xFF12172B),
+        animationSpec = tween(200),
+        label = "targetText"
+    )
+    val animatedIconBoxBg by animateColorAsState(
+        targetValue = if (isActive) Color.White.copy(alpha = 0.18f) else Color(0xFFF6F8FC),
+        animationSpec = tween(200),
+        label = "targetIconBoxBg"
+    )
+    val animatedIconTint by animateColorAsState(
+        targetValue = if (isActive) Color.White else accent.primary,
+        animationSpec = tween(200),
+        label = "targetIconTint"
+    )
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = bgColor),
-        border = BorderStroke(1.dp, borderColor),
+        colors = CardDefaults.cardColors(containerColor = animatedBgColor),
+        border = BorderStroke(1.dp, animatedBorderColor),
         shape = RoundedCornerShape(18.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier
-            .then(if (isDisabled) Modifier.background(bgColor.copy(alpha = 0.45f), RoundedCornerShape(18.dp)) else Modifier)
+            .then(if (isDisabled) Modifier.background(animatedBgColor.copy(alpha = 0.45f), RoundedCornerShape(18.dp)) else Modifier)
             .clickable(enabled = !isDisabled, onClick = onClick)
             .testTag(testTag)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
@@ -1443,13 +1464,13 @@ fun TargetButton(
                 modifier = Modifier
                     .size(30.dp)
                     .clip(RoundedCornerShape(9.dp))
-                    .background(iconBoxBg),
+                    .background(animatedIconBoxBg),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = iconTint,
+                    tint = animatedIconTint,
                     modifier = Modifier.size(15.dp)
                 )
             }
@@ -1458,7 +1479,7 @@ fun TargetButton(
                 text = title,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.5.sp,
-                color = textColor,
+                color = animatedTextColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1808,6 +1829,7 @@ fun LiveLogCard(
                             LogTimelineEntry(
                                 log = logs[index],
                                 accent = accent,
+                                isFirstItem = index == 0,
                                 isLastItem = index == logs.size - 1
                             )
                         }
@@ -1822,6 +1844,7 @@ fun LiveLogCard(
 fun LogTimelineEntry(
     log: LogEntry,
     accent: AppAccent,
+    isFirstItem: Boolean = false,
     isLastItem: Boolean = false
 ) {
     val tagText = when (log) {
@@ -1834,33 +1857,41 @@ fun LogTimelineEntry(
     val tagBg = when (log) {
         is LogEntry.Success -> Color(0xFFE1F8EF)
         is LogEntry.Error -> Color(0xFFFEF2F2)
-        else -> Color(0xFFE1F8EF)
+        else -> accent.primary.copy(alpha = 0.12f)
     }
 
     val tagTextColor = when (log) {
         is LogEntry.Success -> Color(0xFF00B37E)
         is LogEntry.Error -> Color(0xFFDC2626)
-        else -> Color(0xFF00B37E)
+        else -> accent.primary
     }
 
     val nodeBorderColor = when (log) {
         is LogEntry.Success -> Color(0xFF00B37E)
         is LogEntry.Error -> Color(0xFFDC2626)
-        else -> Color(0xFF00B37E)
+        else -> accent.primary
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .drawBehind {
-                if (!isLastItem) {
-                    val x = 11.dp.toPx() / 2f
-                    val startY = 11.dp.toPx()
-                    val endY = size.height
+                val dotX = 11.dp.toPx() / 2f
+                val dotCenterY = 10.dp.toPx()
+                
+                if (!isFirstItem) {
                     drawLine(
                         color = Color(0xFFDEE3EF),
-                        start = androidx.compose.ui.geometry.Offset(x, startY),
-                        end = androidx.compose.ui.geometry.Offset(x, endY),
+                        start = androidx.compose.ui.geometry.Offset(dotX, 0f),
+                        end = androidx.compose.ui.geometry.Offset(dotX, dotCenterY),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                }
+                if (!isLastItem) {
+                    drawLine(
+                        color = Color(0xFFDEE3EF),
+                        start = androidx.compose.ui.geometry.Offset(dotX, dotCenterY),
+                        end = androidx.compose.ui.geometry.Offset(dotX, size.height),
                         strokeWidth = 2.dp.toPx()
                     )
                 }
@@ -1878,7 +1909,7 @@ fun LogTimelineEntry(
                     modifier = Modifier
                         .size(11.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFE1F8EF))
+                        .background(tagBg)
                         .border(2.dp, nodeBorderColor, CircleShape)
                 )
 
@@ -1930,15 +1961,21 @@ fun FolderSettingsScreen(
     onPickExternalUri: () -> Unit,
     paddingValues: PaddingValues
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFEEF2F9))
-            .padding(paddingValues)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(paddingValues),
+        contentAlignment = Alignment.TopCenter
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = 440.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         // Settings Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -2095,20 +2132,18 @@ fun FolderSettingsScreen(
             }
         )
 
-        // Rule 4.5: Direct /data/media/ Scan (shows when Root Access is active)
-        if (rootAccessGranted) {
-            RuleRow(
-                title = "Direct /data/media/ Scan",
-                subtitle = "Target direct /data/media/0 path with superuser permissions",
-                icon = Icons.Default.Storage,
-                checked = settings.scanDirectDataMedia,
-                accent = accent,
-                testTag = "scan_direct_data_media_switch",
-                onCheckedChange = { checked ->
-                    onUpdateSettings { it.copy(scanDirectDataMedia = checked) }
-                }
-            )
-        }
+        // Rule 4.5: Direct /data/media/ Scan
+        RuleRow(
+            title = "Direct /data/media/ Scan",
+            subtitle = "Target direct /data/media/0 path with superuser permissions",
+            icon = Icons.Default.Storage,
+            checked = settings.scanDirectDataMedia,
+            accent = accent,
+            testTag = "scan_direct_data_media_switch",
+            onCheckedChange = { checked ->
+                onUpdateSettings { it.copy(scanDirectDataMedia = checked) }
+            }
+        )
 
         // Rule 5: External Storage Location
         RuleRow(
@@ -2229,6 +2264,7 @@ fun FolderSettingsScreen(
             }
         }
     }
+}
 }
 
 @Composable

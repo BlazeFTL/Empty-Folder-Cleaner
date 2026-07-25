@@ -91,7 +91,7 @@ enum class AppAccent(
     val isMixed: Boolean = false
 ) {
     // 13 Preset Tailwind Color Styles matching user mockup
-    BREEZE_BLUE("Breeze Blue", Color(0xFF2F3C7E), Color(0xFFECEEF9), Color(0xFF1F2A63), Color(0xFFDEE3EF)),
+    BREEZE_BLUE("Breeze Blue", Color(0xFF2F3C7E), Color(0xFFECEEF9), Color(0xFF1F2A63), Color(0xFFDEE3EF), secondaryColor = Color(0xFF00B37E), isMixed = true),
     EMERALD_FOREST("Emerald Forest", Color(0xFF00B37E), Color(0xFFE1F8EF), Color(0xFF007A56), Color(0xFFA3F0D3)),
     WARM_AMBER("Warm Amber", Color(0xFFF5A623), Color(0xFFFFFBEB), Color(0xFFB45309), Color(0xFFFDE68A)),
     ROYAL_PURPLE("Royal Purple", Color(0xFF8B5CF6), Color(0xFFF5F3FF), Color(0xFF6D28D9), Color(0xFFDDD6FE)),
@@ -1113,14 +1113,31 @@ fun FolderDeleterDashboard(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .drawBehind {
+                                drawRect(Color(0xFFEEF2F9))
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(Color(0xFFE4EBF9), Color(0x00E4EBF9)),
+                                        center = androidx.compose.ui.geometry.Offset(size.width * 0.15f, 0f),
+                                        radius = size.width * 0.75f
+                                    )
+                                )
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(Color(0xFFE8F7F0), Color(0x00E8F7F0)),
+                                        center = androidx.compose.ui.geometry.Offset(size.width * 1.0f, size.height * 0.2f),
+                                        radius = size.width * 0.70f
+                                    )
+                                )
+                            }
                             .padding(paddingValues),
                         contentAlignment = Alignment.TopCenter
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .widthIn(max = 380.dp)
-                                .padding(horizontal = 24.dp, vertical = 14.dp),
+                                .widthIn(max = 440.dp)
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                         // Header
@@ -1151,7 +1168,9 @@ fun FolderDeleterDashboard(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
                                     .background(
-                                        if (isPermissionGranted) accent.container else Color(0xFFFEF2F2)
+                                        if (isPermissionGranted) {
+                                            if (accent == AppAccent.BREEZE_BLUE) Color(0xFFE1F8EF) else accent.container
+                                        } else Color(0xFFFEF2F2)
                                     )
                                     .clickable {
                                         if (!isPermissionGranted) {
@@ -1165,7 +1184,9 @@ fun FolderDeleterDashboard(
                                     Icon(
                                         imageVector = if (isPermissionGranted) Icons.Default.Check else Icons.Default.Warning,
                                         contentDescription = null,
-                                        tint = if (isPermissionGranted) accent.primary else Color(0xFFDC2626),
+                                        tint = if (isPermissionGranted) {
+                                            if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
+                                        } else Color(0xFFDC2626),
                                         modifier = Modifier.size(13.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -1173,7 +1194,9 @@ fun FolderDeleterDashboard(
                                         text = if (isPermissionGranted) "Access Granted" else "Access Pending",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isPermissionGranted) accent.primary else Color(0xFFDC2626)
+                                        color = if (isPermissionGranted) {
+                                            if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
+                                        } else Color(0xFFDC2626)
                                     )
                                 }
                             }
@@ -1514,7 +1537,7 @@ fun TargetButton(
         colors = CardDefaults.cardColors(containerColor = animatedBgColor),
         border = BorderStroke(1.dp, animatedBorderColor),
         shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
             .then(if (isDisabled) Modifier.background(animatedBgColor.copy(alpha = 0.45f), RoundedCornerShape(18.dp)) else Modifier)
             .clickable(enabled = !isDisabled, onClick = onClick)
@@ -1603,7 +1626,7 @@ fun ProgressCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(accent.container)
+                            .background(if (accent == AppAccent.BREEZE_BLUE) Color(0xFFE1F8EF) else accent.container)
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1612,14 +1635,14 @@ fun ProgressCard(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(accent.primary.copy(alpha = pulseAlpha))
+                                    .background((if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary).copy(alpha = pulseAlpha))
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Running",
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = accent.primary
+                                color = if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
                             )
                         }
                     }
@@ -1692,8 +1715,8 @@ fun ProgressCard(
 
                 OutlinedButton(
                     onClick = onCancel,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF6B52)),
-                    border = BorderStroke(1.5.dp, Color(0xFFFF6B52)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = accent.primary),
+                    border = BorderStroke(1.5.dp, accent.primary),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1922,19 +1945,19 @@ fun LogTimelineEntry(
     }
 
     val tagBg = when (log) {
-        is LogEntry.Success -> accent.container
+        is LogEntry.Success -> if (accent == AppAccent.BREEZE_BLUE) Color(0xFFE1F8EF) else accent.container
         is LogEntry.Error -> Color(0xFFFEF2F2)
         else -> accent.container
     }
 
     val tagTextColor = when (log) {
-        is LogEntry.Success -> accent.primary
+        is LogEntry.Success -> if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
         is LogEntry.Error -> Color(0xFFDC2626)
         else -> accent.primary
     }
 
     val nodeBorderColor = when (log) {
-        is LogEntry.Success -> accent.primary
+        is LogEntry.Success -> if (accent == AppAccent.BREEZE_BLUE) Color(0xFF00B37E) else accent.primary
         is LogEntry.Error -> Color(0xFFDC2626)
         else -> accent.primary
     }
@@ -2031,16 +2054,32 @@ fun FolderSettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFEEF2F9))
+            .drawBehind {
+                drawRect(Color(0xFFEEF2F9))
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFFE4EBF9), Color(0x00E4EBF9)),
+                        center = androidx.compose.ui.geometry.Offset(size.width * 0.15f, 0f),
+                        radius = size.width * 0.75f
+                    )
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFFE8F7F0), Color(0x00E8F7F0)),
+                        center = androidx.compose.ui.geometry.Offset(size.width * 1.0f, size.height * 0.2f),
+                        radius = size.width * 0.70f
+                    )
+                )
+            }
             .padding(paddingValues),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 380.dp)
+                .widthIn(max = 440.dp)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         // Settings Header

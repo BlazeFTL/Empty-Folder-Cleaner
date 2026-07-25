@@ -1745,186 +1745,196 @@ fun FolderDeleterDashboard(
             ) {
 
                 // ==========================================
-                // Brand & Header Panel with Inline Permission Badge & Settings
+                // Brand & Header Panel matching concept screenshot
                 // ==========================================
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 10.dp)
+                        .padding(top = 16.dp, bottom = 16.dp)
                 ) {
-                    Text(
-                        text = "Empty Folder Cleaner",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = accent.primary,
-                        letterSpacing = (-0.5).sp,
-                    )
+                    Column {
+                        Text(
+                            text = "Empty Folder Cleaner",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = Color(0xFF12172B),
+                            letterSpacing = (-0.5).sp,
+                        )
+                        Text(
+                            text = "STORAGE · RECLAIM",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF94A3B8),
+                            letterSpacing = 0.8.sp
+                        )
+                    }
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isPermissionGranted) accent.container else Color(0xFFFEF2F2)
-                        ),
-                        border = BorderStroke(
-                            1.dp,
-                            if (isPermissionGranted) accent.border else Color(0xFFFCA5A5)
-                        ),
-                        shape = RoundedCornerShape(16.dp),
+                    // Access Granted green pill badge
+                    Box(
                         modifier = Modifier
+                            .background(
+                                color = if (isPermissionGranted) Color(0xFFE1F8EF) else Color(0xFFFEE2E2),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
                             .then(
                                 if (!isPermissionGranted) {
-                                    Modifier.clickable {
-                                        showPermissionExplanatoryDialog = true
-                                    }
+                                    Modifier.clickable { showPermissionExplanatoryDialog = true }
                                 } else Modifier
                             )
+                            .padding(horizontal = 12.dp, vertical = 7.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = if (isPermissionGranted) Icons.Default.CheckCircle else Icons.Default.Warning,
+                                imageVector = if (isPermissionGranted) Icons.Default.Check else Icons.Default.Warning,
                                 contentDescription = null,
-                                tint = if (isPermissionGranted) accent.primary else Color(0xFFEF4444),
-                                modifier = Modifier.size(14.dp)
+                                tint = if (isPermissionGranted) Color(0xFF00B37E) else Color(0xFFEF4444),
+                                modifier = Modifier.size(13.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isPermissionGranted) "Access: Granted" else "Access: Denied",
-                                fontSize = 11.sp,
+                                text = if (isPermissionGranted) "Access Granted" else "Access Denied",
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isPermissionGranted) accent.text else Color(0xFF991B1B)
+                                color = if (isPermissionGranted) Color(0xFF00B37E) else Color(0xFFEF4444)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                    IconButton(
+                    Surface(
                         onClick = { showSettingsDialog = true },
-                        modifier = Modifier.testTag("settings_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = Color(0xFF64748B)
-                        )
-                    }
-                }
-
-            // ==========================================
-            // Action Delete Buttons Column (Stacked Layout)
-            // ==========================================
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = screenState !is ScreenState.ScanInProgress) {
-                            if (checkHasTotalAccess()) {
-                                val extPath = java.io.File(Environment.getExternalStorageDirectory().absolutePath)
-                                viewModel.startDirectFileScan(extPath)
-                            } else {
-                                showPermissionExplanatoryDialog = true
-                            }
-                        }
-                        .testTag("clean_phone_memory_button")
-                ) {
-                    Box(
+                        shape = RoundedCornerShape(11.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
+                            .size(38.dp)
+                            .testTag("settings_button")
                     ) {
-                        Row(
-                            modifier = Modifier.width(310.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(accent.container, shape = androidx.compose.foundation.shape.CircleShape)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PhoneAndroid,
-                                    contentDescription = null,
-                                    tint = accent.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = "Delete Empty Folders - Internal",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = Color(0xFF0F172A)
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = Color(0xFF636C82),
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                 }
 
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(16.dp),
+                // ==========================================
+                // Target Action Buttons (Side-by-Side Pill Row)
+                // ==========================================
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = screenState !is ScreenState.ScanInProgress) {
-                            if (checkHasTotalAccess()) {
-                                val sdRoot = viewModel.findSdCardRoot(context)
-                                if (sdRoot != null) {
-                                    viewModel.addInfoLog("Physical external SD Card detected at: ${sdRoot.absolutePath}")
-                                    viewModel.startDirectFileScan(sdRoot)
-                                } else {
-                                    viewModel.addInfoLog("No mounted external SD Card detected under standard directories. Opening backup storage folder selector...")
-                                    safLauncher.launch(null)
-                                }
-                            } else {
-                                showPermissionExplanatoryDialog = true
-                            }
-                        }
-                        .testTag("clean_sd_card_button")
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Box(
+                    val isScanningInternal = screenState is ScreenState.ScanInProgress
+                    // Internal Storage Pill Card
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = accent.primary
+                        ),
+                        shape = RoundedCornerShape(18.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
+                            .weight(1f)
+                            .height(58.dp)
+                            .clickable(enabled = screenState !is ScreenState.ScanInProgress) {
+                                if (checkHasTotalAccess()) {
+                                    val extPath = java.io.File(Environment.getExternalStorageDirectory().absolutePath)
+                                    viewModel.startDirectFileScan(extPath)
+                                } else {
+                                    showPermissionExplanatoryDialog = true
+                                }
+                            }
+                            .testTag("clean_phone_memory_button")
                     ) {
                         Row(
-                            modifier = Modifier.width(310.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .background(accent.container, shape = androidx.compose.foundation.shape.CircleShape)
+                                    .size(32.dp)
+                                    .background(Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(10.dp))
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.FolderOpen,
+                                    imageVector = Icons.Default.Smartphone,
                                     contentDescription = null,
-                                    tint = accent.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "Delete Empty Folders - SD Card",
+                                text = "Internal Storage",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
-                                color = Color(0xFF0F172A)
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    // SD Card Pill Card
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(58.dp)
+                            .clickable(enabled = screenState !is ScreenState.ScanInProgress) {
+                                if (checkHasTotalAccess()) {
+                                    val sdRoot = viewModel.findSdCardRoot(context)
+                                    if (sdRoot != null) {
+                                        viewModel.addInfoLog("Physical external SD Card detected at: ${sdRoot.absolutePath}")
+                                        viewModel.startDirectFileScan(sdRoot)
+                                    } else {
+                                        viewModel.addInfoLog("No mounted external SD Card detected under standard directories. Opening backup storage folder selector...")
+                                        safLauncher.launch(null)
+                                    }
+                                } else {
+                                    showPermissionExplanatoryDialog = true
+                                }
+                            }
+                            .testTag("clean_sd_card_button")
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(Color(0xFFF1F5F9), shape = RoundedCornerShape(10.dp))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SdCard,
+                                    contentDescription = null,
+                                    tint = Color(0xFF636C82),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "SD Card",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = Color(0xFF334155)
                             )
                         }
                     }
@@ -2038,20 +2048,21 @@ fun FolderDeleterDashboard(
             }
 
             // ==========================================
-            // Live Scanning Progress Card (Mini state display)
+            // Live Scanning Progress Card (Matching Concept Screenshot)
             // ==========================================
             AnimatedVisibility(visible = screenState is ScreenState.ScanInProgress) {
                 val progressState = screenState as? ScreenState.ScanInProgress
                 progressState?.let { progress ->
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                            .padding(vertical = 6.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(modifier = Modifier.padding(18.dp)) {
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
@@ -2061,75 +2072,79 @@ fun FolderDeleterDashboard(
                                     text = "DELETION PROGRESS",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF64748B),
-                                    letterSpacing = 0.5.sp
+                                    color = Color(0xFF94A3B8),
+                                    letterSpacing = 0.8.sp
                                 )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.End
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0xFFE1F8EF), shape = androidx.compose.foundation.shape.CircleShape)
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .background(accent.primary, shape = androidx.compose.foundation.shape.CircleShape)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Running",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = accent.primary
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .background(Color(0xFF00B37E), shape = androidx.compose.foundation.shape.CircleShape)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Running",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF00B37E)
+                                        )
+                                    }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             LinearProgressIndicator(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
-                                color = accent.primary,
-                                trackColor = accent.container
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp)),
+                                color = Color(0xFF00B37E),
+                                trackColor = Color(0xFFE2E8F0)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = "Path: ${progress.currentPath}",
-                                fontSize = 11.sp,
+                                fontSize = 11.5.sp,
                                 fontFamily = FontFamily.Monospace,
                                 color = Color(0xFF64748B),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
                                     text = "Scanned: ${progress.scannedCount}",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF64748B)
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E293B)
                                 )
                                 Text(
                                     text = if (settings.dryRun) "Found: ${progress.deletedCount}" else "Deleted: ${progress.deletedCount}",
-                                    fontSize = 11.sp,
-                                    color = accent.primary,
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF1E293B),
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Button(
+                            Spacer(modifier = Modifier.height(14.dp))
+                            OutlinedButton(
                                 onClick = { viewModel.cancelScan() },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = accent.primary,
-                                    contentColor = Color.White
+                                border = BorderStroke(1.5.dp, Color(0xFFFF6B52)),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFFFF6B52)
                                 ),
-                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(38.dp)
+                                    .height(44.dp)
                             ) {
-                                Text("Cancel Operation", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Cancel Operation", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -2227,63 +2242,54 @@ fun FolderDeleterDashboard(
             }
 
             // ==========================================
-            // Deletion Log Card (White Background, minimal)
+            // Live Log Card (Exact Match to Concept)
             // ==========================================
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.15f)),
-                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFDEE3EF)),
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
                     .padding(vertical = 4.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .background(accent.container, shape = RoundedCornerShape(6.dp))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Terminal,
-                                    contentDescription = "Log",
-                                    tint = accent.primary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Log",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                color = Color(0xFF0F172A)
-                            )
-                        }
+                        Text(
+                            text = "Live Log",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color(0xFF12172B)
+                        )
 
+                        val isRunning = screenState is ScreenState.ScanInProgress
                         Box(
                             modifier = Modifier
-                                .border(1.dp, accent.primary.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .background(
+                                    if (isRunning) Color(0xFFE1F8EF) else Color(0xFFF1F5F9),
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .size(4.dp)
-                                        .background(Color(0xFF10B981), shape = androidx.compose.foundation.shape.CircleShape)
+                                        .size(6.dp)
+                                        .background(
+                                            if (isRunning) Color(0xFF00B37E) else Color(0xFF94A3B8),
+                                            shape = androidx.compose.foundation.shape.CircleShape
+                                        )
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "Live",
-                                    fontSize = 8.sp,
-                                    color = Color(0xFF64748B),
-                                    fontWeight = FontWeight.Bold
+                                    text = if (isRunning) "Running" else "Idle",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isRunning) Color(0xFF00B37E) else Color(0xFF64748B)
                                 )
                             }
                         }
@@ -2294,9 +2300,9 @@ fun FolderDeleterDashboard(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
-                            .background(accent.container.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                            .border(1.dp, accent.primary.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                            .heightIn(min = 220.dp, max = 380.dp)
+                            .background(Color(0xFFFAFAFE), RoundedCornerShape(16.dp))
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
                             .padding(12.dp)
                     ) {
                         if (logs.isEmpty()) {
@@ -2339,7 +2345,6 @@ fun FolderDeleterDashboard(
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
-}
 
     // ==========================================
     // System Storage Permission Dialogue (Material 3 compliant)
@@ -2396,8 +2401,8 @@ fun FolderDeleterDashboard(
             }
         )
     }
-        }
-    }
+}
+}
 }
 
 // ==========================================
@@ -2406,8 +2411,15 @@ fun FolderDeleterDashboard(
 
 @Composable
 fun ConsoleLogLine(log: LogEntry, accent: AppAccent) {
-    val chipColor = when (log) {
-        is LogEntry.Success -> if (log.isDryRun) Color(0xFF8B5CF6) else Color(0xFF10B981) // Violet/Purple for EMPTY, Green for DELETED
+    val chipBgColor = when (log) {
+        is LogEntry.Success -> if (log.isDryRun) Color(0xFFF3E8FF) else Color(0xFFE1F8EF)
+        is LogEntry.Error -> Color(0xFFFEE2E2)
+        is LogEntry.ScanProgress -> Color(0xFFF1F5F9)
+        is LogEntry.Info -> accent.container
+    }
+
+    val chipTextColor = when (log) {
+        is LogEntry.Success -> if (log.isDryRun) Color(0xFF7C3AED) else Color(0xFF00B37E)
         is LogEntry.Error -> Color(0xFFEF4444)
         is LogEntry.ScanProgress -> Color(0xFF64748B)
         is LogEntry.Info -> accent.primary
@@ -2420,65 +2432,46 @@ fun ConsoleLogLine(log: LogEntry, accent: AppAccent) {
         is LogEntry.Info -> "STATUS"
     }
 
-    val rowBgColor = when (log) {
-        is LogEntry.Info -> accent.container  // Light theme-colored container tint for System status
-        is LogEntry.Error -> Color(0xFFFEF2F2) // Light red tint for System error
-        else -> Color.Transparent              // Transparent for standard scanned/deleted items
-    }
-
-    val rowBorder = when (log) {
-        is LogEntry.Info -> BorderStroke(1.dp, accent.border)
-        is LogEntry.Error -> BorderStroke(1.dp, Color(0xFFFEE2E2))
-        else -> null
-    }
-
-    val textWeight = if (log is LogEntry.Info || log is LogEntry.Error) FontWeight.SemiBold else FontWeight.Normal
-    val textColor = when (log) {
-        is LogEntry.Info -> accent.text
-        is LogEntry.Error -> Color(0xFF991B1B)
-        else -> Color(0xFF475569) // Standard slate-dark text color for file paths
-    }
-
-    val fontFamily = if (log is LogEntry.Success || log is LogEntry.ScanProgress) FontFamily.Monospace else FontFamily.SansSerif
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = rowBgColor),
-        border = rowBorder,
-        shape = RoundedCornerShape(6.dp),
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.5.dp)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        Row(
+        // Timeline dot
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp, horizontal = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+                .padding(top = 4.dp, end = 12.dp)
+                .size(12.dp)
+                .border(2.dp, chipTextColor, androidx.compose.foundation.shape.CircleShape)
+                .background(Color.White, shape = androidx.compose.foundation.shape.CircleShape)
+        )
+
+        Column(modifier = Modifier.weight(1f)) {
+            // Pill tag
             Box(
                 modifier = Modifier
-                    .width(56.dp)
-                    .background(chipColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
-                    .border(1.dp, chipColor.copy(alpha = 0.25f), RoundedCornerShape(4.dp))
-                    .padding(vertical = 1.5.dp, horizontal = 2.dp),
-                contentAlignment = Alignment.Center
+                    .background(chipBgColor, shape = RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = label,
-                    fontSize = 8.sp,
+                    fontSize = 9.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    color = chipColor
+                    color = chipTextColor
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // File Path or status text
             Text(
                 text = log.text,
-                fontSize = 9.5.sp,
-                fontFamily = fontFamily,
-                fontWeight = textWeight,
-                color = textColor,
-                modifier = Modifier.weight(1f)
+                fontSize = 11.sp,
+                fontFamily = if (log is LogEntry.Success || log is LogEntry.ScanProgress) FontFamily.Monospace else FontFamily.SansSerif,
+                color = Color(0xFF64748B),
+                lineHeight = 15.sp
             )
         }
     }

@@ -98,7 +98,23 @@ enum class AppAccent(
 
     companion object {
         fun fromName(name: String): AppAccent {
-            return values().firstOrNull { it.displayName == name } ?: SAPPHIRE
+            return values().firstOrNull { it.displayName.equals(name, ignoreCase = true) }
+                ?: when (name) {
+                    "Breeze Blue" -> SAPPHIRE
+                    "Emerald Forest" -> EMERALD
+                    "Warm Amber" -> AMBER
+                    "Royal Purple" -> VIOLET
+                    "Blaze Crimson" -> CRIMSON
+                    "Sunset Orange" -> CORAL
+                    "Deep Indigo" -> COSMIC_DUSK
+                    "Rose Pink" -> ROSE
+                    "Midnight Mint" -> MINT_AURORA
+                    "Neon Synth" -> ELECTRIC_VELVET
+                    "Cyber Citrus" -> CITRUS_FLAME
+                    "Cosmic Lavender" -> VIOLET
+                    "Ocean Teal" -> TEAL
+                    else -> SAPPHIRE
+                }
         }
     }
 }
@@ -164,7 +180,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
             dryRun = prefs.getBoolean("dry_run", false),
             cleanAndroidFolder = prefs.getBoolean("clean_android", false),
             hideDryRun = prefs.getBoolean("hide_dry_run", false),
-            accentName = prefs.getString("accent_name", "Sapphire Blue") ?: "Sapphire Blue",
+            accentName = AppAccent.fromName(prefs.getString("accent_name", "Sapphire Blue") ?: "Sapphire Blue").displayName,
             enableExternalStorage = prefs.getBoolean("enable_external", false),
             externalStorageUri = prefs.getString("external_uri", "") ?: "",
             scanDirectDataMedia = prefs.getBoolean("scan_direct_data_media", true)
@@ -2492,41 +2508,74 @@ fun AccentOptionCard(
             containerColor = if (isSelected) accent.container else Color.White
         ),
         border = BorderStroke(
-            1.5.dp,
+            if (isSelected) 2.5.dp else 1.dp,
             if (isSelected) accent.primary else Color(0xFFE2E8F0)
         ),
         shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 3.dp else 0.dp
+        ),
         modifier = modifier
-            .height(72.dp)
+            .height(76.dp)
             .clickable(onClick = onClick)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
-                    .size(24.dp)
-                    .background(
-                        brush = if (accent.isMixed) {
-                            Brush.linearGradient(colors = listOf(accent.primary, accent.secondaryColor))
-                        } else {
-                            Brush.linearGradient(colors = listOf(accent.primary, accent.primary))
-                        },
-                        shape = androidx.compose.foundation.shape.CircleShape
+                    .fillMaxSize()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(
+                            brush = if (accent.isMixed) {
+                                Brush.linearGradient(colors = listOf(accent.primary, accent.secondaryColor))
+                            } else {
+                                Brush.linearGradient(colors = listOf(accent.primary, accent.primary))
+                            },
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = accent.displayName,
+                    fontSize = 11.sp,
+                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    color = if (isSelected) accent.text else Color(0xFF475569),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(16.dp)
+                        .background(accent.primary, androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(10.dp)
                     )
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = accent.displayName,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isSelected) accent.text else Color(0xFF475569),
-                textAlign = TextAlign.Center
-            )
+                }
+            }
         }
     }
 }

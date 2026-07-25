@@ -29,7 +29,7 @@ fun MyApplicationTheme(
             secondary = accent.secondaryColor,
             secondaryContainer = accent.container,
             tertiary = accent.text,
-            background = Color(0xFFF8FAFC), // Clean crisp slate background
+            background = accent.container, // Dynamic theme-tinted background canvas
             surface = Color.White,          // Clean white surface for cards
             surfaceVariant = Color.White,
             onPrimary = Color.White,

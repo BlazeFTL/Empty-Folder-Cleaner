@@ -1118,19 +1118,19 @@ fun FolderDeleterDashboard(
                         modifier = Modifier
                             .fillMaxSize()
                             .drawBehind {
-                                drawRect(Color(0xFFEEF2F9))
+                                drawRect(Color(0xFFEEF2F8))
                                 drawCircle(
                                     brush = Brush.radialGradient(
-                                        colors = listOf(Color(0xFFE4EBF9), Color(0x00E4EBF9)),
-                                        center = androidx.compose.ui.geometry.Offset(size.width * 0.15f, 0f),
-                                        radius = size.width * 0.75f
+                                        colors = listOf(Color(0xFFD6E4FB), Color(0x00D6E4FB)),
+                                        center = androidx.compose.ui.geometry.Offset(size.width * 0.05f, 0f),
+                                        radius = size.width * 0.95f
                                     )
                                 )
                                 drawCircle(
                                     brush = Brush.radialGradient(
-                                        colors = listOf(Color(0xFFE8F7F0), Color(0x00E8F7F0)),
-                                        center = androidx.compose.ui.geometry.Offset(size.width * 1.0f, size.height * 0.2f),
-                                        radius = size.width * 0.70f
+                                        colors = listOf(Color(0xFFC7F2E2), Color(0x00C7F2E2)),
+                                        center = androidx.compose.ui.geometry.Offset(size.width * 0.95f, size.height * 0.12f),
+                                        radius = size.width * 0.90f
                                     )
                                 )
                             }
@@ -1139,10 +1139,11 @@ fun FolderDeleterDashboard(
                     ) {
                         Column(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .widthIn(max = 380.dp)
+                                .fillMaxHeight()
+                                .widthIn(max = 350.dp)
+                                .fillMaxWidth()
                                 .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 24.dp, vertical = 14.dp),
+                                .padding(horizontal = 14.dp, vertical = 14.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                         // Header
@@ -2082,19 +2083,19 @@ fun FolderSettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .drawBehind {
-                drawRect(Color(0xFFEEF2F9))
+                drawRect(Color(0xFFEEF2F8))
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFFE4EBF9), Color(0x00E4EBF9)),
-                        center = androidx.compose.ui.geometry.Offset(size.width * 0.15f, 0f),
-                        radius = size.width * 0.75f
+                        colors = listOf(Color(0xFFD6E4FB), Color(0x00D6E4FB)),
+                        center = androidx.compose.ui.geometry.Offset(size.width * 0.05f, 0f),
+                        radius = size.width * 0.95f
                     )
                 )
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFFE8F7F0), Color(0x00E8F7F0)),
-                        center = androidx.compose.ui.geometry.Offset(size.width * 1.0f, size.height * 0.2f),
-                        radius = size.width * 0.70f
+                        colors = listOf(Color(0xFFC7F2E2), Color(0x00C7F2E2)),
+                        center = androidx.compose.ui.geometry.Offset(size.width * 0.95f, size.height * 0.12f),
+                        radius = size.width * 0.90f
                     )
                 )
             }
@@ -2103,10 +2104,11 @@ fun FolderSettingsScreen(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .widthIn(max = 380.dp)
+                .fillMaxHeight()
+                .widthIn(max = 350.dp)
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 14.dp),
+                .padding(horizontal = 14.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         // Settings Header

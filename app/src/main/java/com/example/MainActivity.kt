@@ -2321,20 +2321,20 @@ fun FolderDeleterDashboard(
                                 )
                             }
                         } else {
-                            val listState = rememberLazyListState()
+                            val logScrollState = rememberScrollState()
 
-                            LaunchedEffect(logs.count()) {
+                            LaunchedEffect(logs.size) {
                                 if (logs.isNotEmpty()) {
-                                    listState.animateScrollToItem(logs.size - 1)
+                                    logScrollState.animateScrollTo(logScrollState.maxValue)
                                 }
                             }
 
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize()
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(logScrollState)
                             ) {
-                                items(logs.size) { index ->
-                                    val log = logs[index]
+                                logs.forEachIndexed { index, log ->
                                     ConsoleLogLine(log = log, accent = accent, isLast = index == logs.size - 1)
                                 }
                             }

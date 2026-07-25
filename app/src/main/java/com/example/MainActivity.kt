@@ -20,7 +20,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -28,6 +30,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -1316,18 +1319,13 @@ fun FolderDeleterDashboard(
                                             color = Color(0xFF636C82)
                                         )
                                     }
-                                    Switch(
+                                    CustomCapsuleToggle(
                                         checked = settings.dryRun,
                                         onCheckedChange = { value ->
                                             viewModel.updateSettings { it.copy(dryRun = value) }
                                         },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = Color.White,
-                                            checkedTrackColor = accent.primary,
-                                            uncheckedThumbColor = Color.White,
-                                            uncheckedTrackColor = Color(0xFFDEE3EF)
-                                        ),
-                                        modifier = Modifier.testTag("dry_run_switch")
+                                        accent = accent,
+                                        testTag = "dry_run_switch"
                                     )
                                 }
                             }
@@ -1541,7 +1539,18 @@ fun ProgressCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Progress Bar
+                // Dynamic Animated Progress Bar starting at 0% (5% initial width) on launch
+                val targetProgress = if (screenState is ScreenState.ScanInProgress) {
+                    if (screenState.scannedCount == 0) 0.05f
+                    else (1f - kotlin.math.exp(-screenState.scannedCount / 350.0).toFloat()).coerceIn(0.08f, 0.96f)
+                } else 1f
+
+                val animatedProgress by animateFloatAsState(
+                    targetValue = targetProgress,
+                    animationSpec = tween(durationMillis = 350),
+                    label = "progressAnim"
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1552,7 +1561,7 @@ fun ProgressCard(
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .fillMaxWidth(fraction = 0.65f)
+                            .fillMaxWidth(fraction = animatedProgress)
                             .clip(RoundedCornerShape(50))
                             .background(
                                 Brush.horizontalGradient(
@@ -1796,7 +1805,11 @@ fun LiveLogCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(logs.size) { index ->
-                            LogTimelineEntry(log = logs[index], accent = accent)
+                            LogTimelineEntry(
+                                log = logs[index],
+                                accent = accent,
+                                isLastItem = index == logs.size - 1
+                            )
                         }
                     }
                 }
@@ -1806,7 +1819,11 @@ fun LiveLogCard(
 }
 
 @Composable
-fun LogTimelineEntry(log: LogEntry, accent: AppAccent) {
+fun LogTimelineEntry(
+    log: LogEntry,
+    accent: AppAccent,
+    isLastItem: Boolean = false
+) {
     val tagText = when (log) {
         is LogEntry.Success -> if (log.isDryRun) "EMPTY" else "DELETED"
         is LogEntry.Error -> "FAILED"
@@ -1817,31 +1834,53 @@ fun LogTimelineEntry(log: LogEntry, accent: AppAccent) {
     val tagBg = when (log) {
         is LogEntry.Success -> Color(0xFFE1F8EF)
         is LogEntry.Error -> Color(0xFFFEF2F2)
-        else -> Color(0xFFF6F8FC)
+        else -> Color(0xFFE1F8EF)
     }
 
     val tagTextColor = when (log) {
         is LogEntry.Success -> Color(0xFF00B37E)
         is LogEntry.Error -> Color(0xFFDC2626)
-        else -> accent.primary
+        else -> Color(0xFF00B37E)
+    }
+
+    val nodeBorderColor = when (log) {
+        is LogEntry.Success -> Color(0xFF00B37E)
+        is LogEntry.Error -> Color(0xFFDC2626)
+        else -> Color(0xFF00B37E)
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 14.dp),
+            .drawBehind {
+                if (!isLastItem) {
+                    val x = 11.dp.toPx() / 2f
+                    val startY = 12.dp.toPx()
+                    val endY = size.height
+                    drawLine(
+                        color = Color(0xFFDEE3EF),
+                        start = androidx.compose.ui.geometry.Offset(x, startY),
+                        end = androidx.compose.ui.geometry.Offset(x, endY),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                }
+            }
+            .padding(bottom = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // Vertical Timeline node
+        // Circle Node Dot
         Box(
             modifier = Modifier
-                .padding(top = 3.dp, end = 12.dp)
+                .padding(top = 4.dp)
                 .size(11.dp)
-                .clip(androidx.compose.foundation.shape.CircleShape)
+                .clip(CircleShape)
                 .background(Color(0xFFE1F8EF))
-                .border(2.dp, Color(0xFF00B37E), androidx.compose.foundation.shape.CircleShape)
+                .border(2.dp, nodeBorderColor, CircleShape)
         )
 
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // Content Column
         Column(modifier = Modifier.weight(1f)) {
             Box(
                 modifier = Modifier
@@ -1863,7 +1902,7 @@ fun LogTimelineEntry(log: LogEntry, accent: AppAccent) {
             Text(
                 text = log.text,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
+                fontSize = 11.5.sp,
                 color = Color(0xFF636C82),
                 lineHeight = 16.sp
             )
@@ -2231,18 +2270,52 @@ fun RuleRow(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Switch(
+            CustomCapsuleToggle(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = accent.primary,
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = Color(0xFFDEE3EF)
-                ),
-                modifier = Modifier.testTag(testTag)
+                accent = accent,
+                testTag = testTag
             )
         }
+    }
+}
+
+@Composable
+fun CustomCapsuleToggle(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    accent: AppAccent,
+    testTag: String = "",
+    modifier: Modifier = Modifier
+) {
+    val trackColor by animateColorAsState(
+        targetValue = if (checked) accent.primary else Color(0xFFDEE3EF),
+        animationSpec = tween(durationMillis = 200),
+        label = "trackColor"
+    )
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 23.dp else 3.dp,
+        animationSpec = tween(durationMillis = 200),
+        label = "thumbOffset"
+    )
+
+    Box(
+        modifier = modifier
+            .width(46.dp)
+            .height(26.dp)
+            .clip(CircleShape)
+            .background(trackColor)
+            .clickable { onCheckedChange(!checked) }
+            .then(if (testTag.isNotEmpty()) Modifier.testTag(testTag) else Modifier),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = thumbOffset)
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+        )
     }
 }
 

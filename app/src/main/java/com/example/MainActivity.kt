@@ -1432,16 +1432,9 @@ fun FolderDeleterDashboard(
                             logs = logs,
                             isScanning = screenState is ScreenState.ScanInProgress,
                             accent = accent,
-                            modifier = if (logs.isEmpty()) {
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(240.dp)
-                            } else {
-                                Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 240.dp)
-                                    .weight(1f, fill = false)
-                            }
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
                         )
                     }
                 }
@@ -1924,11 +1917,9 @@ fun LiveLogCard(
         modifier = modifier
     ) {
         Column(
-            modifier = if (logs.isEmpty()) {
-                Modifier.fillMaxSize().padding(18.dp)
-            } else {
-                Modifier.fillMaxWidth().padding(18.dp)
-            }
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1991,7 +1982,8 @@ fun LiveLogCard(
             if (logs.isEmpty()) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .padding(vertical = 20.dp)
                         .testTag("log_idle_message_box"),
                     contentAlignment = Alignment.Center
                 ) {
@@ -2011,26 +2003,22 @@ fun LiveLogCard(
                     }
                 }
 
-                Box(
+                LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f, fill = false)
                 ) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(
-                            count = logs.size,
-                            key = { index -> index }
-                        ) { index ->
-                            LogTimelineEntry(
-                                log = logs[index],
-                                accent = accent,
-                                isFirstItem = index == 0,
-                                isLastItem = index == logs.size - 1
-                            )
-                        }
+                    items(
+                        count = logs.size,
+                        key = { index -> index }
+                    ) { index ->
+                        LogTimelineEntry(
+                            log = logs[index],
+                            accent = accent,
+                            isFirstItem = index == 0,
+                            isLastItem = index == logs.size - 1
+                        )
                     }
                 }
             }

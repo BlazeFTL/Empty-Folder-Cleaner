@@ -1428,13 +1428,23 @@ fun FolderDeleterDashboard(
                         }
 
                         // Live Log Card
+                        val liveLogModifier = when {
+                            logs.size > 5 -> Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                            logs.isEmpty() -> Modifier
+                                .fillMaxWidth()
+                                .wrapContentHeight()
+                            else -> Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 320.dp)
+                        }
+
                         LiveLogCard(
                             logs = logs,
                             isScanning = screenState is ScreenState.ScanInProgress,
                             accent = accent,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f, fill = false)
+                            modifier = liveLogModifier
                         )
                     }
                 }
@@ -1917,10 +1927,11 @@ fun LiveLogCard(
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 280.dp)
-                .padding(18.dp)
+            modifier = if (logs.size > 5) {
+                Modifier.fillMaxSize().padding(18.dp)
+            } else {
+                Modifier.fillMaxWidth().padding(18.dp)
+            }
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1984,7 +1995,7 @@ fun LiveLogCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .padding(vertical = 24.dp)
                         .testTag("log_idle_message_box"),
                     contentAlignment = Alignment.Center
                 ) {
@@ -2006,9 +2017,13 @@ fun LiveLogCard(
 
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
+                    modifier = if (logs.size > 5) {
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    } else {
+                        Modifier.fillMaxWidth()
+                    }
                 ) {
                     items(
                         count = logs.size,

@@ -357,7 +357,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
     }
 
     private fun getEffectiveRootForScan(root: File, scanDirectDataMedia: Boolean): File {
-        if (!_rootAccessGranted.value || !scanDirectDataMedia) return root
+        if (!_rootAccessGranted.value) return root
         val path = root.absolutePath
         return when {
             path == "/storage/emulated/0" || path == "/storage/emulated/0/" || path == "/sdcard" || path == "/sdcard/" -> {
@@ -371,6 +371,13 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
                 } else {
                     File("/data/media/0")
                 }
+            }
+            path.startsWith("/storage/") && !path.startsWith("/storage/emulated") -> {
+                val sdName = path.removePrefix("/storage/").substringBefore('/')
+                if (sdName.isNotEmpty()) {
+                    val mntRw = File("/mnt/media_rw/$sdName")
+                    if (mntRw.exists() && mntRw.isDirectory) mntRw else root
+                } else root
             }
             else -> root
         }
@@ -518,72 +525,102 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
     ) {
         onLog(LogEntry.Info("[ROOT ENGINE] Scanning directories at ultra-fast speeds using superuser privileges..."))
 
-        val rootPathEscaped = root.absolutePath.replace("\"", "\\\"")
+        fun displayPath(p: String): String {
+            return if (p.startsWith("/data/media/0")) {
+                "/storage/emulated/0" + p.removePrefix("/data/media/0")
+            } else p
+        }
+
+        val rootPathClean = root.absolutePath.trimEnd('/')
+        val rootPathEscaped = rootPathClean.replace("\"", "\\\"")
         val script = """
-            find "$rootPathEscaped" -type d | while read -r d; do
-                [ "${'$'}d" = "$rootPathEscaped" ] && continue
-                
-                # Never delete standard Android system folders themselves
-                case "${'$'}d" in
-                    */Android|*/Android/data|*/Android/obb|*/Android/media|*/Android/|*/Android/data/|*/Android/obb/|*/Android/media/) continue ;;
+            root="$rootPathEscaped"
+            cleanAndroid="$cleanAndroidFolder"
+            delHidden="$deleteHidden"
+            treatNoMedia="$treatNoMediaAsEmpty"
+            treatEmptyFiles="$treatEmptyFilesAsEmpty"
+            isDryRun="$dryRun"
+
+            find "$rootPathEscaped" -mindepth 1 -depth -type d 2>/dev/null | while read -r d; do
+                [ -z "${'$'}d" ] && continue
+                clean_d="${'$'}{d%/}"
+
+                case "${'$'}clean_d" in
+                    "${'$'}root"|"/storage/emulated/0"|"/data/media/0"|"/sdcard") continue ;;
+                    */Android|*/Android/data|*/Android/obb|*/Android/media) continue ;;
                 esac
 
-                if [ "$cleanAndroidFolder" = "false" ]; then
-                    case "${'$'}d" in
+                if [ "${'$'}cleanAndroid" = "false" ]; then
+                    case "${'$'}clean_d" in
                         */Android|*/Android/*) continue ;;
                     esac
                 fi
-                
-                if [ "$deleteHidden" = "false" ]; then
-                    case "${'$'}d" in
+
+                if [ "${'$'}delHidden" = "false" ]; then
+                    case "${'$'}clean_d" in
                         */.*|*/.*/*) continue ;;
                     esac
                 fi
-                
-                [ -d "${'$'}d" ] || continue
-                
-                is_empty=1
-                files_to_delete=""
-                
-                for f in "${'$'}d"/.* "${'$'}d"/*; do
-                    [ -e "${'$'}f" ] || continue
-                    
+
+                [ -d "${'$'}clean_d" ] || continue
+
+                has_subdir=0
+                has_valid_file=0
+                useless_files=""
+
+                for f in "${'$'}clean_d"/.* "${'$'}clean_d"/*; do
+                    [ -e "${'$'}f" ] || [ -L "${'$'}f" ] || continue
                     name="${'$'}{f##*/}"
                     [ "${'$'}name" = "." ] && continue
                     [ "${'$'}name" = ".." ] && continue
                     [ "${'$'}name" = "*" ] && continue
                     [ "${'$'}name" = ".*" ] && continue
-                    
+
                     if [ -d "${'$'}f" ]; then
-                        is_empty=0
+                        has_subdir=1
                         break
-                    fi
-                    
-                    is_useless=0
-                    if [ "$treatNoMediaAsEmpty" = "true" ] && [ "${'$'}name" = ".nomedia" ]; then
-                        is_useless=1
-                    elif [ "$deleteHidden" = "true" ] && case "${'$'}name" in .*) true;; *) false;; esac; then
-                        is_useless=1
-                    elif [ "$treatEmptyFilesAsEmpty" = "true" ] && [ ! -s "${'$'}f" ]; then
-                        is_useless=1
-                    fi
-                    
-                    if [ "${'$'}is_useless" = "1" ]; then
-                        files_to_delete="${'$'}files_to_delete\"${'$'}f\" "
                     else
-                        is_empty=0
-                        break
+                        is_useless=0
+                        if [ "${'$'}treatNoMedia" = "true" ] && [ "${'$'}name" = ".nomedia" ]; then
+                            is_useless=1
+                        elif [ "${'$'}delHidden" = "true" ] && case "${'$'}name" in .*) true;; *) false;; esac; then
+                            is_useless=1
+                        elif [ "${'$'}treatEmptyFiles" = "true" ] && [ ! -s "${'$'}f" ]; then
+                            is_useless=1
+                        fi
+
+                        if [ "${'$'}is_useless" = "1" ]; then
+                            useless_files="${'$'}useless_files \"${'$'}f\""
+                        else
+                            has_valid_file=1
+                            break
+                        fi
                     fi
                 done
-                
-                if [ "${'$'}is_empty" = "1" ]; then
-                    echo "EMPTY_DIR:${'$'}d|${'$'}files_to_delete"
+
+                if [ "${'$'}has_subdir" = "0" ] && [ "${'$'}has_valid_file" = "0" ]; then
+                    if [ "${'$'}isDryRun" = "true" ]; then
+                        echo "DRY_RUN:${'$'}clean_d"
+                    else
+                        if [ -n "${'$'}useless_files" ]; then
+                            eval rm -f ${'$'}useless_files 2>/dev/null
+                        fi
+                        if rmdir "${'$'}clean_d" 2>/dev/null || rm -rf "${'$'}clean_d" 2>/dev/null; then
+                            echo "DELETED:${'$'}clean_d"
+                        else
+                            echo "FAILED:${'$'}clean_d"
+                        fi
+                    fi
                 fi
             done
         """.trimIndent()
 
         val process = try {
-            Runtime.getRuntime().exec(arrayOf("su", "-c", script))
+            val p = Runtime.getRuntime().exec("su")
+            val os = java.io.DataOutputStream(p.outputStream)
+            os.writeBytes("$script\nexit\n")
+            os.flush()
+            p
         } catch (e: Exception) {
             onLog(LogEntry.Error("[ROOT] Failed to run optimized root scanner: ${e.localizedMessage}. Falling back to standard JVM scanner."))
             cleanDirectoryRecursive(root, deleteHidden, treatNoMediaAsEmpty, treatEmptyFilesAsEmpty, dryRun, cleanAndroidFolder, stats, onLog, isCancelled)
@@ -591,76 +628,48 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
         }
 
         val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
-        val discoveredEmptyDirs = mutableListOf<Pair<String, String>>() // Pair of (dirPath, filesToDelete)
-        
+
         try {
             var line: String?
             while (reader.readLine().also { line = it } != null) {
                 if (isCancelled()) break
-                val trimmedLine = line?.trim() ?: continue
-                if (trimmedLine.startsWith("EMPTY_DIR:")) {
-                    val content = trimmedLine.removePrefix("EMPTY_DIR:")
-                    val parts = content.split('|', limit = 2)
-                    if (parts.isNotEmpty()) {
-                        val dirPath = parts[0]
-                        val filesToDelete = if (parts.size > 1) parts[1] else ""
-                        discoveredEmptyDirs.add(Pair(dirPath, filesToDelete))
+                val trimmed = line?.trim() ?: continue
+                when {
+                    trimmed.startsWith("DELETED:") -> {
+                        val dirPath = trimmed.removePrefix("DELETED:")
+                        val visPath = displayPath(dirPath)
+                        stats.scannedFolders++
+                        stats.deletedFolders++
+                        onLog(LogEntry.ScanProgress(visPath))
+                        onLog(LogEntry.Success("Removed: $visPath", visPath, isDryRun = false))
+                    }
+                    trimmed.startsWith("DRY_RUN:") -> {
+                        val dirPath = trimmed.removePrefix("DRY_RUN:")
+                        val visPath = displayPath(dirPath)
+                        stats.scannedFolders++
+                        stats.deletedFolders++
+                        onLog(LogEntry.ScanProgress(visPath))
+                        onLog(LogEntry.Success(visPath, visPath, isDryRun = true))
+                    }
+                    trimmed.startsWith("FAILED:") -> {
+                        val dirPath = trimmed.removePrefix("FAILED:")
+                        val visPath = displayPath(dirPath)
+                        stats.scannedFolders++
+                        onLog(LogEntry.Error("Failed to remove root directory: $visPath"))
                     }
                 }
             }
             process.waitFor()
         } catch (e: Exception) {
-            onLog(LogEntry.Error("[ROOT] Error during optimized directory discovery: ${e.localizedMessage}"))
+            onLog(LogEntry.Error("[ROOT] Error during optimized directory operation: ${e.localizedMessage}"))
         } finally {
             try { reader.close() } catch (ignored: Exception) {}
             process.destroy()
         }
 
-        if (isCancelled()) return
-
-        // Sort by length descending to process deepest directories first
-        discoveredEmptyDirs.sortByDescending { it.first.length }
-
-        onLog(LogEntry.Info("[ROOT] Discovered ${discoveredEmptyDirs.size} empty directories. Proceeding with deletion..."))
-
-        for ((dirPath, filesToDelete) in discoveredEmptyDirs) {
-            if (isCancelled()) return
-            
-            val cleanPath = dirPath.replace("\\", "/").trimEnd('/')
-            val isSystemRoot = cleanPath.endsWith("/Android", ignoreCase = true) ||
-                    cleanPath.endsWith("/Android/data", ignoreCase = true) ||
-                    cleanPath.endsWith("/Android/obb", ignoreCase = true) ||
-                    cleanPath.endsWith("/Android/media", ignoreCase = true)
-            if (isSystemRoot) {
-                continue
-            }
-
-            stats.scannedFolders++
-            onLog(LogEntry.ScanProgress(dirPath))
-
-            if (dryRun) {
-                stats.deletedFolders++
-                onLog(LogEntry.Success(dirPath, dirPath, isDryRun = true))
-            } else {
-                val rmDirSuccess = try {
-                    val cmd = if (filesToDelete.trim().isNotEmpty()) {
-                        "rm -f $filesToDelete && rmdir \"$dirPath\""
-                    } else {
-                        "rmdir \"$dirPath\""
-                    }
-                    val rmProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-                    rmProcess.waitFor() == 0
-                } catch (e: Exception) {
-                    File(dirPath).delete()
-                }
-
-                if (rmDirSuccess) {
-                    stats.deletedFolders++
-                    onLog(LogEntry.Success("Removed: $dirPath", dirPath, isDryRun = false))
-                } else {
-                    onLog(LogEntry.Error("Failed to remove root directory: $dirPath"))
-                }
-            }
+        if (!isCancelled() && stats.scannedFolders == 0) {
+            onLog(LogEntry.Info("[ROOT ENGINE] Deep verification scan: running secondary check to ensure no folders were missed..."))
+            cleanDirectoryRecursive(root, deleteHidden, treatNoMediaAsEmpty, treatEmptyFilesAsEmpty, dryRun, cleanAndroidFolder, stats, onLog, isCancelled)
         }
     }
 
@@ -839,7 +848,16 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
                     }
                 }
                 if (fileCleanupSuccess) {
-                    if (dir.delete()) {
+                    var deleted = dir.delete()
+                    if (!deleted && _rootAccessGranted.value) {
+                        try {
+                            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "rmdir \"$path\" 2>/dev/null || rm -rf \"$path\" 2>/dev/null"))
+                            deleted = p.waitFor() == 0
+                        } catch (e: Exception) {
+                            deleted = false
+                        }
+                    }
+                    if (deleted) {
                         stats.deletedFolders++
                         onLog(LogEntry.Success("Removed: $path", path, isDryRun = false))
                     } else {
@@ -1414,9 +1432,8 @@ fun FolderDeleterDashboard(
                             accent = accent,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .then(
-                                    if (logs.isNotEmpty()) Modifier.weight(1f) else Modifier.wrapContentHeight()
-                                )
+                                .heightIn(min = 280.dp)
+                                .weight(1f, fill = false)
                         )
                     }
                 }
@@ -1900,8 +1917,7 @@ fun LiveLogCard(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .then(if (logs.isNotEmpty()) Modifier.fillMaxSize() else Modifier.wrapContentHeight())
+                .fillMaxSize()
                 .padding(18.dp)
         ) {
             Row(
@@ -1965,8 +1981,7 @@ fun LiveLogCard(
             if (logs.isEmpty()) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp)
+                        .fillMaxSize()
                         .testTag("log_idle_message_box"),
                     contentAlignment = Alignment.Center
                 ) {

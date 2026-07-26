@@ -1434,7 +1434,6 @@ fun FolderDeleterDashboard(
                             accent = accent,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 280.dp, max = 460.dp)
                                 .weight(1f, fill = false)
                         )
                     }

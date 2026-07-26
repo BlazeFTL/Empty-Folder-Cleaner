@@ -1432,10 +1432,16 @@ fun FolderDeleterDashboard(
                             logs = logs,
                             isScanning = screenState is ScreenState.ScanInProgress,
                             accent = accent,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 280.dp)
-                                .weight(1f, fill = false)
+                            modifier = if (logs.isEmpty()) {
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(240.dp)
+                            } else {
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 240.dp)
+                                    .weight(1f, fill = false)
+                            }
                         )
                     }
                 }
@@ -1918,9 +1924,11 @@ fun LiveLogCard(
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(18.dp)
+            modifier = if (logs.isEmpty()) {
+                Modifier.fillMaxSize().padding(18.dp)
+            } else {
+                Modifier.fillMaxWidth().padding(18.dp)
+            }
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2006,7 +2014,7 @@ fun LiveLogCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .weight(1f, fill = false)
                 ) {
                     LazyColumn(
                         state = listState,

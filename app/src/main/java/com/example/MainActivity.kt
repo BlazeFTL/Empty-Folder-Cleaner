@@ -1428,16 +1428,14 @@ fun FolderDeleterDashboard(
                         }
 
                         // Live Log Card
-                        val liveLogModifier = when {
-                            logs.size > 5 -> Modifier
+                        val liveLogModifier = if (logs.size > 5) {
+                            Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
-                            logs.isEmpty() -> Modifier
+                        } else {
+                            Modifier
                                 .fillMaxWidth()
-                                .wrapContentHeight()
-                            else -> Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 320.dp)
+                                .height(290.dp)
                         }
 
                         LiveLogCard(
@@ -1927,11 +1925,9 @@ fun LiveLogCard(
         modifier = modifier
     ) {
         Column(
-            modifier = if (logs.size > 5) {
-                Modifier.fillMaxSize().padding(18.dp)
-            } else {
-                Modifier.fillMaxWidth().padding(18.dp)
-            }
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(18.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1995,7 +1991,7 @@ fun LiveLogCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 24.dp)
+                        .weight(1f)
                         .testTag("log_idle_message_box"),
                     contentAlignment = Alignment.Center
                 ) {
@@ -2017,13 +2013,9 @@ fun LiveLogCard(
 
                 LazyColumn(
                     state = listState,
-                    modifier = if (logs.size > 5) {
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    } else {
-                        Modifier.fillMaxWidth()
-                    }
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
                 ) {
                     items(
                         count = logs.size,

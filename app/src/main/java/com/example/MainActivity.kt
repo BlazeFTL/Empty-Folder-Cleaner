@@ -1434,7 +1434,6 @@ fun FolderDeleterDashboard(
                             accent = accent,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 280.dp)
                                 .weight(1f, fill = false)
                         )
                     }
@@ -1919,7 +1918,7 @@ fun LiveLogCard(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(18.dp)
         ) {
             Row(
@@ -1984,7 +1983,7 @@ fun LiveLogCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .padding(vertical = 20.dp)
                         .testTag("log_idle_message_box"),
                     contentAlignment = Alignment.Center
                 ) {
@@ -2008,7 +2007,7 @@ fun LiveLogCard(
                     state = listState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .weight(1f, fill = false)
                 ) {
                     items(
                         count = logs.size,

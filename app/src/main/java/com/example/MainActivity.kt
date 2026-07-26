@@ -563,6 +563,7 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
                 fi
 
                 [ -d "${'$'}clean_d" ] || continue
+                echo "SCANNED:${'$'}clean_d"
 
                 has_subdir=0
                 has_valid_file=0
@@ -635,26 +636,27 @@ class FolderDeleterViewModel(application: Application) : AndroidViewModel(applic
                 if (isCancelled()) break
                 val trimmed = line?.trim() ?: continue
                 when {
+                    trimmed.startsWith("SCANNED:") -> {
+                        val dirPath = trimmed.removePrefix("SCANNED:")
+                        val visPath = displayPath(dirPath)
+                        stats.scannedFolders++
+                        onLog(LogEntry.ScanProgress(visPath))
+                    }
                     trimmed.startsWith("DELETED:") -> {
                         val dirPath = trimmed.removePrefix("DELETED:")
                         val visPath = displayPath(dirPath)
-                        stats.scannedFolders++
                         stats.deletedFolders++
-                        onLog(LogEntry.ScanProgress(visPath))
                         onLog(LogEntry.Success("Removed: $visPath", visPath, isDryRun = false))
                     }
                     trimmed.startsWith("DRY_RUN:") -> {
                         val dirPath = trimmed.removePrefix("DRY_RUN:")
                         val visPath = displayPath(dirPath)
-                        stats.scannedFolders++
                         stats.deletedFolders++
-                        onLog(LogEntry.ScanProgress(visPath))
                         onLog(LogEntry.Success(visPath, visPath, isDryRun = true))
                     }
                     trimmed.startsWith("FAILED:") -> {
                         val dirPath = trimmed.removePrefix("FAILED:")
                         val visPath = displayPath(dirPath)
-                        stats.scannedFolders++
                         onLog(LogEntry.Error("Failed to remove root directory: $visPath"))
                     }
                 }

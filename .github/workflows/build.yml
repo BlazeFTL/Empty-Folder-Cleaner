@@ -24,9 +24,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Patch build.gradle.kts
-        run: |
-          sed -i '/signingConfig = signingConfigs.getByName("debugConfig")/d' app/build.gradle.kts
-          sed -i '/buildTypes {/,/release {/{/release {/a\            signingConfig = signingConfigs.getByName("debug")' app/build.gradle.kts
+        run: sed -i '/signingConfig = signingConfigs.getByName("debugConfig")/d' app/build.gradle.kts
 
       - name: Build Release APK
         run: gradle assembleRelease --stacktrace
